@@ -53,8 +53,8 @@ Nhóm đã tạo repository riêng và lập **48 GitHub Issues (CV01–CV48)**,
 | Thành viên | Công việc dự kiến | Sản phẩm bàn giao mong đợi |
 |---|---|---|
 | **Chu Thị Minh Hạnh** | Hoàn thiện yêu cầu, Use Case, phân quyền sơ bộ và kiến trúc tích hợp. | Tài liệu yêu cầu, sơ đồ kiến trúc và bảng phân quyền. |
-| **Nguyễn Nam** | Rà soát NestJS/API; chuẩn bị các phần nền tảng của mobile và luồng chọn rạp, suất chiếu, giữ ghế. | Backend chạy được và bằng chứng gọi API; mã nguồn chức năng được đẩy lên nhánh phát triển. |
-| **Phương Linh** | Kiểm tra dữ liệu SQL Server, thiết kế giao diện điều hướng mobile, xác thực tài khoản. | Kết quả kiểm tra dữ liệu, giao diện mobile và luồng đăng nhập ban đầu. |
+| **Nguyễn Hà Trung Nam** | Rà soát NestJS/API; chuẩn bị các phần nền tảng của mobile và luồng chọn rạp, suất chiếu, giữ ghế. | Backend chạy được và bằng chứng gọi API; mã nguồn chức năng được đẩy lên nhánh phát triển. |
+| **Phạm Phương Linh** | Kiểm tra dữ liệu SQL Server, thiết kế giao diện điều hướng mobile, xác thực tài khoản. | Kết quả kiểm tra dữ liệu, giao diện mobile và luồng đăng nhập ban đầu. |
 | **Phạm Ngọc Thành** | Thiết kế phân quyền theo chi nhánh, khởi tạo khung web quản trị React/TypeScript. | Thiết kế phân quyền và mã nguồn khung web quản trị. |
 | **Nguyễn Quốc Tuấn** | Triển khai giao diện danh sách/chi tiết phim, chuẩn bị mẫu tài liệu và checklist kiểm thử UI. | Màn hình phim ban đầu, tài liệu và minh chứng kiểm thử. |
 
