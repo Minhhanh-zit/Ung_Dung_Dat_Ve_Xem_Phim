@@ -24,12 +24,11 @@ Nhóm đã tạo repository riêng và lập **48 GitHub Issues (CV01–CV48)**,
 | STT | Thành viên | Nhiệm vụ phụ trách | Công việc đã ghi nhận trong tuần | Trạng thái |
 |---|---|---|---|---|
 | 1 | **Chu Thị Minh Hạnh** | Trưởng nhóm, phân tích nghiệp vụ (BA), AI và GPS. Phụ trách CV01, CV03, CV04, CV09, CV30–CV34, CV48. | Đã tổ chức repository dự án; thống nhất phạm vi hệ thống, phân chia 48 đầu việc và giao nhiệm vụ trong GitHub Issues. Chưa có bản Use Case hoặc kiến trúc hệ thống được bàn giao trên `main`. | **Hoàn thành phần lập kế hoạch ban đầu; phần thiết kế đang chờ bàn giao** |
-| 2 | **Nguyễn Nam** | Phát triển chính ứng dụng di động và backend. Phụ trách CV02, CV05, CV08, CV13–CV16, CV20, CV44. | Đã nhận phân công kiểm tra backend/API, xây dựng luồng đặt vé, giữ ghế và thanh toán. Chưa thấy mã nguồn hoặc kết quả kiểm thử của cá nhân trên repository để xác nhận hoàn thành. | **Đã phân công, chờ minh chứng thực hiện** |
-| 3 | **Phương Linh** | Mobile UI, SQL Server và kiểm thử. Phụ trách CV06, CV10, CV11, CV17, CV19, CV35–CV38, CV43. | Đã nhận phân công kiểm tra cơ sở dữ liệu, xây dựng giao diện và kiểm thử nghiệp vụ. Chưa thấy mã nguồn, báo cáo kiểm thử hoặc dữ liệu bàn giao trên repository. | **Đã phân công, chờ minh chứng thực hiện** |
+| 2 | **Nguyễn Hà Trung Nam Nam** | Phát triển chính ứng dụng di động và backend. Phụ trách CV02, CV05, CV08, CV13–CV16, CV20, CV44. | Đã nhận phân công kiểm tra backend/API, xây dựng luồng đặt vé, giữ ghế và thanh toán. Chưa thấy mã nguồn hoặc kết quả kiểm thử của cá nhân trên repository để xác nhận hoàn thành. | **Đã phân công, chờ minh chứng thực hiện** |
+| 3 | **Phạm Phương Linh** | Mobile UI, SQL Server và kiểm thử. Phụ trách CV06, CV10, CV11, CV17, CV19, CV35–CV38, CV43. | Đã nhận phân công kiểm tra cơ sở dữ liệu, xây dựng giao diện và kiểm thử nghiệp vụ. Chưa thấy mã nguồn, báo cáo kiểm thử hoặc dữ liệu bàn giao trên repository. | **Đã phân công, chờ minh chứng thực hiện** |
 | 4 | **Phạm Ngọc Thành** | Web Admin, quản lý chi nhánh và bảo mật. Phụ trách CV07, CV21–CV25, CV27–CV29, CV39, CV46, CV47. | Đã nhận phân công xây dựng web quản trị, phân quyền và quản lý dữ liệu theo chi nhánh. Chưa thấy mã nguồn web hoặc kết quả kiểm thử bảo mật trên repository. | **Đã phân công, chờ minh chứng thực hiện** |
 | 5 | **Nguyễn Quốc Tuấn** | Giao diện cơ bản, CRUD phim, tài liệu và kiểm thử. Phụ trách CV12, CV18, CV26, CV40–CV42, CV45. | Đã nhận phân công giao diện phim, CRUD phim, kiểm thử UI và tài liệu. Chưa thấy sản phẩm bàn giao tương ứng trên repository. | **Đã phân công, chờ minh chứng thực hiện** |
 
-**Lưu ý:** Bảng trên chỉ ghi nhận kết quả có thể kiểm chứng tại thời điểm báo cáo. Thành viên đã thực hiện công việc ngoài GitHub cần gửi mã nguồn, hình ảnh, video hoặc biên bản kiểm thử để trưởng nhóm xác nhận trước khi chuyển trạng thái thành “Hoàn thành”.
 
 ## III. Kết quả chung đã thực hiện
 
@@ -39,7 +38,7 @@ Nhóm đã tạo repository riêng và lập **48 GitHub Issues (CV01–CV48)**,
 4. Lập 48 công việc có mã CV, mô tả, mức ưu tiên, phụ thuộc và tiêu chí nghiệm thu.
 5. Phân công trách nhiệm chính cho 5 thành viên, làm cơ sở triển khai và cập nhật tiến độ theo từng tuần.
 
-Các kết quả đã xác nhận chủ yếu thuộc **khởi tạo, phân tích sơ bộ và quản lý công việc**, không đồng nghĩa các chức năng phần mềm đã hoàn thiện.
+
 
 ## IV. Khó khăn và nội dung cần xử lý
 
@@ -74,5 +73,4 @@ Nhóm đã hoàn thành bước khởi tạo repository, định hướng phạm
 
 Trong kỳ báo cáo, sản phẩm kỹ thuật chưa có minh chứng bàn giao trên nhánh `main`, vì vậy nhóm cần ưu tiên đồng bộ mã nguồn và kết quả kiểm thử, triển khai quy trình review và xác nhận trạng thái hoàn thành theo từng Issue.
 
-**Đại diện nhóm**  
-**Trưởng nhóm: Chu Thị Minh Hạnh**
+
