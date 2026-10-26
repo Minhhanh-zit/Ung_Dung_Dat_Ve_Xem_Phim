@@ -60,6 +60,13 @@ Nhóm đã tạo repository riêng và lập **48 GitHub Issues (CV01–CV48)**,
 
 **Ưu tiên của tuần tiếp theo:** Có mã nguồn triển khai thực tế trong repository mới, đồng bộ API và cơ sở dữ liệu, sau đó nghiệm thu từng Issue dựa trên kết quả thử nghiệm.
 
+
+## Minh chứng họp nhóm
+
+- **Video ghi lại buổi họp nhóm CineHunt Mobile:** https://youtu.be/YijEeqPgfxI
+- **Mục đích đính kèm:** Cung cấp đường dẫn minh chứng hoạt động trao đổi và phối hợp của nhóm trong giai đoạn lập kế hoạch.
+- **Lưu ý kiểm chứng:** Đường dẫn do thành viên nhóm cung cấp; báo cáo chưa xác minh độc lập nội dung, thời lượng, ngày họp hoặc danh sách người tham dự từ video, nên không suy diễn thành các kết luận đã được thông qua.
+
 ## VI. Liên kết GitHub
 
 - **Repository (`main`):** https://github.com/Minhhanh-zit/Ung_Dung_Dat_Ve_Xem_Phim/tree/main
