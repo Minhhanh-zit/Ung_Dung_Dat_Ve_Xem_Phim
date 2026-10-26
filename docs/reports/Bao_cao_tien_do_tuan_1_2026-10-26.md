@@ -2,7 +2,7 @@
 
 **Tuần báo cáo:** Tuần 1 – Giai đoạn khởi tạo và lập kế hoạch  
 **Ngày cập nhật:** 26/10/2026  
-**Đề tài:** Ứng dụng đặt vé xem phim trên thiết bị di động  
+**Đề tài:** Ứng dụng đặt vé xem phim   
 **Tên hệ thống:** CineHunt Mobile  
 **Số lượng thành viên:** 05  
 **Trưởng nhóm:** Chu Thị Minh Hạnh
