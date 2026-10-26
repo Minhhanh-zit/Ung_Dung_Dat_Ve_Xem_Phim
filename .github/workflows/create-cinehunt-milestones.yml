@@ -17,6 +17,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          python3 - <<'PY'
           import os, json, re, urllib.request, urllib.error
           repo = os.environ['GITHUB_REPOSITORY']
           token = os.environ['GH_TOKEN']
@@ -65,4 +66,4 @@ jobs:
           expected = {'CV'+str(i).zfill(2) for i in range(1,49)}
           if found != expected: raise RuntimeError('Missing CV: ' + str(sorted(expected-found)))
           print('SUCCESS: 10 milestones,', len(found), 'issues found,', updated, 'issues assigned or updated')
-          
+          PY
