@@ -1,0 +1,33 @@
+name: Color CineHunt issue labels
+on:
+  push:
+    paths:
+      - '.github/workflows/format-cinehunt-issue-labels.yml'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  color-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set priority, component and pending-owner colors
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import os, json, urllib.request, urllib.error, urllib.parse
+          repo=os.environ['GITHUB_REPOSITORY']
+          token=os.environ['GH_TOKEN']
+          labels={"P0":"d73a4a","P1":"fbca04","planning":"1d76db","backend":"5319e7","database":"0e8a16","security":"b60205","mobile":"0366d6","booking":"d93f0b","staff":"17a2b8","web-admin":"006b75","ai":"8250df","gps":"0e8a16","testing":"fb8c00","docs":"64748b","awaiting-invite":"e4b363","owner:nam":"a2eeef","owner:tuan":"c2e0c6"}
+          headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}
+          for name,color in labels.items():
+              url='https://api.github.com/repos/'+repo+'/labels/'+urllib.parse.quote(name,safe='')
+              body=json.dumps({'color':color}).encode('utf-8')
+              req=urllib.request.Request(url,data=body,method='PATCH',headers=headers)
+              with urllib.request.urlopen(req,timeout=30) as resp:
+                  result=json.loads(resp.read().decode('utf-8'))
+                  print(result['name'],result['color'])
+          print('SUCCESS: Updated',len(labels),'label colors')
+          PY
