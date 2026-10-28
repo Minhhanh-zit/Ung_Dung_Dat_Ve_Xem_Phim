@@ -1,0 +1,20 @@
+
+> frontend@0.0.0 test
+> vitest run
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/Users/zit/Documents/2025-2026/2026-2027/Kỳ Thu/Phát triển ứng dụng di động /Cinehunt/admin-web[39m
+
+ [32m✓[39m test/auth.api.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m test/seat.service.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m test/ticket-history.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m test/booking-payment.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m test/route-guards.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 83[2mms[22m[39m
+ [32m✓[39m test/login-register.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 864[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m6 passed[39m[22m[90m (6)[39m
+[2m      Tests [22m [1m[32m40 passed[39m[22m[90m (40)[39m
+[2m   Start at [22m 16:54:17
+[2m   Duration [22m 5.85s[2m (transform 1.00s, setup 5.43s, import 1.11s, tests 1.02s, environment 18.06s)[22m
+
+Exit code: 0

@@ -1,0 +1,415 @@
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Brackets, In, Repository } from 'typeorm';
+import { User } from '../entities/user.entity';
+import { BookingOrder } from '../entities/booking-order.entity';
+import * as bcrypt from 'bcrypt';
+
+export const DB_ROLES = ['CUSTOMER', 'STAFF', 'ADMIN'] as const;
+
+@Injectable()
+export class UsersService {
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+    @InjectRepository(BookingOrder)
+    private readonly bookingRepo: Repository<BookingOrder>,
+  ) {}
+
+  private normalizePhone(phone: string): string {
+    const normalized = String(phone ?? '').replace(/[\s.-]/g, '');
+
+    if (!/^\+?\d{9,15}$/.test(normalized)) {
+      throw new BadRequestException('Số điện thoại không hợp lệ');
+    }
+
+    return normalized;
+  }
+
+  private async applyImmutablePhone(
+    user: User,
+    requestedPhone: string | undefined,
+  ): Promise<void> {
+    if (requestedPhone === undefined) return;
+
+    const raw = requestedPhone.trim();
+    const currentPhone = user.phone
+      ? String(user.phone).replace(/[\s.-]/g, '')
+      : null;
+
+    if (!raw) {
+      if (currentPhone) {
+        throw new BadRequestException(
+          'Số điện thoại đã liên kết không thể xoá hoặc thay đổi',
+        );
+      }
+      return;
+    }
+
+    const normalized = this.normalizePhone(raw);
+
+    if (currentPhone) {
+      if (currentPhone !== normalized) {
+        throw new BadRequestException(
+          'Mỗi tài khoản chỉ được liên kết một số điện thoại và không thể thay đổi',
+        );
+      }
+      return;
+    }
+
+    const existed = await this.userRepo.findOne({
+      where: { phone: normalized },
+    });
+    if (existed && existed.userId !== user.userId) {
+      throw new ConflictException(
+        'Số điện thoại này đã được sử dụng bởi tài khoản khác',
+      );
+    }
+
+    user.phone = normalized;
+  }
+
+  async findById(userId: number): Promise<User> {
+    const user = await this.userRepo
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.userId = :userId', { userId })
+      .getOne();
+    if (!user) throw new NotFoundException(`User #${userId} không tồn tại`);
+    return user;
+  }
+
+  async getProfile(userId: number) {
+    try {
+      const user = await this.userRepo.findOne({ where: { userId } });
+      if (!user) throw new NotFoundException('Không tìm thấy user');
+      return this.toProfile(user);
+    } catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      throw new InternalServerErrorException('Không tải được thông tin người dùng');
+    }
+  }
+
+  async updateProfile(
+    userId: number,
+    dto: { fullName?: string; phone?: string; avatarUrl?: string },
+  ) {
+    try {
+      const user = await this.userRepo.findOne({ where: { userId } });
+      if (!user) throw new NotFoundException('Không tìm thấy user');
+      if (dto.fullName !== undefined) user.fullName = dto.fullName.trim();
+      await this.applyImmutablePhone(user, dto.phone);
+      if (dto.avatarUrl !== undefined) user.avatarUrl = dto.avatarUrl ?? null;
+      await this.userRepo.save(user);
+      return this.toProfile(user);
+    } catch (err) {
+      if (
+        err instanceof NotFoundException ||
+        err instanceof BadRequestException ||
+        err instanceof ConflictException
+      ) {
+        throw err;
+      }
+      throw new InternalServerErrorException('Không cập nhật được thông tin');
+    }
+  }
+
+  async getMembershipStats(userId: number) {
+    const successfulStatuses = ['PAID', 'CONFIRMED', 'ISSUED'];
+
+    const paidOrders = await this.bookingRepo.find({
+      where: {
+        userId,
+        status: In(successfulStatuses),
+      },
+      select: {
+        bookingId: true,
+        totalAmount: true,
+        status: true,
+      },
+    });
+
+    const totalSpent = paidOrders.reduce(
+      (sum, booking) => sum + Number(booking.totalAmount ?? 0),
+      0,
+    );
+    const paidBookings = paidOrders.length;
+
+    const points = Math.floor(totalSpent / 1000);
+
+    const tiers = [
+      { name: 'Member' as const, min: 0 },
+      { name: 'Silver' as const, min: 1000 },
+      { name: 'Gold' as const, min: 3000 },
+      { name: 'Platinum' as const, min: 7000 },
+    ];
+
+    let tierIndex = 0;
+    for (let index = tiers.length - 1; index >= 0; index -= 1) {
+      if (points >= tiers[index].min) {
+        tierIndex = index;
+        break;
+      }
+    }
+
+    const currentTier = tiers[tierIndex];
+    const nextTier = tiers[tierIndex + 1] ?? null;
+
+    const progressPercent = nextTier
+      ? Math.min(
+          100,
+          Math.max(
+            0,
+            ((points - currentTier.min) /
+              (nextTier.min - currentTier.min)) *
+              100,
+          ),
+        )
+      : 100;
+
+    return {
+      tier: currentTier.name,
+      points,
+      totalSpent,
+      paidBookings,
+      nextTier: nextTier?.name ?? null,
+      pointsToNextTier: nextTier
+        ? Math.max(0, nextTier.min - points)
+        : 0,
+      progressPercent: Math.round(progressPercent),
+    };
+  }
+
+  async changePassword(
+    userId: number,
+    dto: { currentPassword: string; newPassword: string },
+  ) {
+    try {
+      const user = await this.findById(userId);
+      const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+      if (!valid)
+        throw new BadRequestException('Mật khẩu hiện tại không đúng');
+      if (dto.currentPassword === dto.newPassword) {
+        throw new BadRequestException(
+          'Mật khẩu mới không được trùng mật khẩu hiện tại',
+        );
+      }
+
+      user.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+      await this.userRepo.manager.transaction(async (manager) => {
+        await manager.save(user);
+        await manager.query(
+          `UPDATE dbo.refresh_tokens
+           SET revoked_at = SYSDATETIME()
+           WHERE user_id = @0 AND revoked_at IS NULL`,
+          [userId],
+        );
+      });
+
+      return {
+        message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.',
+      };
+    } catch (err) {
+      if (err instanceof NotFoundException || err instanceof BadRequestException) throw err;
+      throw new InternalServerErrorException('Không đổi được mật khẩu');
+    }
+  }
+
+  async changeEmail(
+    userId: number,
+    dto: { newEmail: string; currentPassword: string },
+  ) {
+    try {
+      const user = await this.findById(userId);
+      const newEmail = dto.newEmail.trim().toLowerCase();
+
+      const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+      if (!valid) throw new BadRequestException('Mật khẩu hiện tại không đúng');
+
+      if (newEmail === user.email.trim().toLowerCase()) {
+        throw new BadRequestException('Email mới trùng với email hiện tại');
+      }
+
+      const existed = await this.userRepo.findOne({ where: { email: newEmail } });
+      if (existed && existed.userId !== userId) {
+        throw new ConflictException('Email này đã được sử dụng bởi tài khoản khác');
+      }
+
+      user.email = newEmail;
+      user.emailVerified = false;
+      await this.userRepo.save(user);
+
+      return { email: user.email, message: 'Đổi email thành công' };
+    } catch (err) {
+      if (
+        err instanceof NotFoundException ||
+        err instanceof BadRequestException ||
+        err instanceof ConflictException
+      )
+        throw err;
+      throw new InternalServerErrorException('Không đổi được email');
+    }
+  }
+
+  async getAllUsers(page = 1, limit = 20, search?: string) {
+    try {
+      const safePage = Math.max(1, Number(page) || 1);
+      const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+
+      const qb = this.userRepo
+        .createQueryBuilder('user')
+        .orderBy('user.createdAt', 'DESC')
+        .skip((safePage - 1) * safeLimit)
+        .take(safeLimit);
+
+      if (search?.trim()) {
+        const keyword = `%${search.trim()}%`;
+        qb.andWhere(
+          new Brackets((w) => {
+            w.where('user.fullName LIKE :keyword', { keyword })
+              .orWhere('user.email LIKE :keyword', { keyword })
+              .orWhere('user.phone LIKE :keyword', { keyword });
+          }),
+        );
+      }
+
+      const [users, total] = await qb.getManyAndCount();
+
+      return {
+        data: users.map((u) => this.toProfile(u)),
+        total,
+        page: safePage,
+        limit: safeLimit,
+        totalPages: Math.ceil(total / safeLimit),
+      };
+    } catch {
+      throw new InternalServerErrorException('Không tải được danh sách người dùng');
+    }
+  }
+
+  listUsers() {
+    return this.getAllUsers();
+  }
+
+  async getUserById(targetId: number) {
+    try {
+      const user = await this.userRepo.findOne({ where: { userId: targetId } });
+      if (!user) throw new NotFoundException(`User #${targetId} không tồn tại`);
+      return this.toProfile(user);
+    } catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      throw new InternalServerErrorException('Không tải được thông tin người dùng');
+    }
+  }
+
+  adminGetUser(targetId: number) {
+    return this.getUserById(targetId);
+  }
+
+  async setUserStatus(targetId: number, status: string) {
+    const allowed = ['ACTIVE', 'BANNED', 'DELETED'];
+    if (!allowed.includes(status)) {
+      throw new BadRequestException(
+        `Trạng thái không hợp lệ. Chỉ chấp nhận: ${allowed.join(', ')}`,
+      );
+    }
+    try {
+      const user = await this.userRepo.findOne({ where: { userId: targetId } });
+      if (!user) throw new NotFoundException(`User #${targetId} không tồn tại`);
+      user.status = status;
+      await this.userRepo.save(user);
+      return this.toProfile(user);
+    } catch (err) {
+      if (err instanceof NotFoundException || err instanceof BadRequestException) throw err;
+      throw new InternalServerErrorException('Không cập nhật được trạng thái người dùng');
+    }
+  }
+
+  async adminUpdateRole(targetId: number, role: string, actorId?: number) {
+    const normalized = this.normalizeRole(role);
+
+    if (actorId && actorId === targetId && normalized !== 'ADMIN') {
+      throw new BadRequestException('Bạn không thể tự hạ quyền của chính mình');
+    }
+
+    const user = await this.userRepo.findOne({ where: { userId: targetId } });
+    if (!user) throw new NotFoundException(`User #${targetId} không tồn tại`);
+
+    if (user.role === 'ADMIN' && normalized !== 'ADMIN') {
+      const adminCount = await this.userRepo.count({
+        where: { role: 'ADMIN', status: 'ACTIVE' },
+      });
+      if (adminCount <= 1) {
+        throw new BadRequestException(
+          'Không thể hạ quyền admin cuối cùng của hệ thống',
+        );
+      }
+    }
+
+    user.role = normalized;
+    await this.userRepo.save(user);
+    return this.toProfile(user);
+  }
+
+  async adminUpdateUser(
+    targetId: number,
+    dto: { fullName?: string; phone?: string; role?: string; status?: string },
+  ) {
+    const user = await this.userRepo.findOne({ where: { userId: targetId } });
+    if (!user) throw new NotFoundException(`User #${targetId} không tồn tại`);
+
+    if (dto.fullName !== undefined) user.fullName = dto.fullName.trim();
+    await this.applyImmutablePhone(user, dto.phone);
+    if (dto.role !== undefined) user.role = this.normalizeRole(dto.role);
+    if (dto.status !== undefined) user.status = dto.status;
+
+    await this.userRepo.save(user);
+    return this.toProfile(user);
+  }
+
+  async adminDeleteUser(targetId: number, actorId?: number) {
+    if (actorId && actorId === targetId) {
+      throw new BadRequestException('Bạn không thể tự xoá tài khoản của chính mình');
+    }
+    const user = await this.userRepo.findOne({ where: { userId: targetId } });
+    if (!user) throw new NotFoundException(`User #${targetId} không tồn tại`);
+
+    user.status = 'DELETED';
+    await this.userRepo.save(user);
+    return { success: true, message: `Đã vô hiệu hoá user #${targetId}` };
+  }
+
+  private normalizeRole(role: string): string {
+    const value = String(role ?? '').trim().toUpperCase();
+    const mapped = value === 'USER' ? 'CUSTOMER' : value;
+    if (!DB_ROLES.includes(mapped as (typeof DB_ROLES)[number])) {
+      throw new BadRequestException(
+        `Role không hợp lệ. Chỉ chấp nhận: USER, CUSTOMER, STAFF, ADMIN`,
+      );
+    }
+    return mapped;
+  }
+
+  private toProfile(user: User) {
+    return {
+      id: user.userId,
+      userId: user.userId,
+      email: user.email,
+      fullName: user.fullName,
+      phone: user.phone ?? null,
+      avatarUrl: user.avatarUrl,
+      emailVerified: user.emailVerified,
+      role: user.role ?? null,
+      status: user.status,
+      lastLoginAt: user.lastLoginAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+}

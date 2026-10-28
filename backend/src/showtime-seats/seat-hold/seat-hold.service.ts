@@ -1,0 +1,382 @@
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, DataSource, In } from 'typeorm';
+import { SeatHold, SeatHoldStatus } from '../../entities/seat-hold.entity';
+import { ShowtimeSeat } from '../../entities/showtime-seat.entity';
+import { HoldSeatDto, HoldSeatsDto, HoldResponseDto } from './dto';
+
+@Injectable()
+export class SeatHoldService {
+  constructor(
+    @InjectRepository(SeatHold)
+    private readonly seatHoldRepository: Repository<SeatHold>,
+    @InjectRepository(ShowtimeSeat)
+    private readonly showtimeSeatRepository: Repository<ShowtimeSeat>,
+    private readonly dataSource: DataSource,
+  ) {}
+
+  async holdSingleSeat(userId: number, dto: HoldSeatDto): Promise<HoldResponseDto> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const { showtimeSeatId, holdMinutes = 10 } = dto;
+
+      const showtimeSeat = await queryRunner.manager.findOne(ShowtimeSeat, {
+        where: { showtimeSeatId },
+        relations: ['showtime', 'showtime.movie', 'showtime.room', 'showtime.room.cinema', 'seat'],
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!showtimeSeat) throw new NotFoundException('Ghế không tồn tại');
+
+      if (showtimeSeat.status !== 'AVAILABLE') {
+        throw new BadRequestException('Ghế không còn trống');
+      }
+
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + holdMinutes);
+
+      await queryRunner.manager.update(ShowtimeSeat, { showtimeSeatId }, {
+        status: 'HELD',
+        heldByUserId: userId,
+        holdExpiresAt: expiresAt,
+      });
+
+      const hold = queryRunner.manager.create(SeatHold, {
+        userId,
+        showtimeSeatId,
+        expiresAt,
+        status: SeatHoldStatus.ACTIVE,
+      });
+
+      let savedHold: SeatHold;
+      try {
+        savedHold = await queryRunner.manager.save(SeatHold, hold);
+      } catch (err: any) {
+        if (err?.number === 2601 || err?.number === 2627 || err?.code === 'ER_DUP_ENTRY') {
+          throw new ConflictException('Ghế đang được giữ bởi người dùng khác');
+        }
+        throw err;
+      }
+
+      await queryRunner.commitTransaction();
+
+      return {
+        holdId: savedHold.holdId,
+        holdToken: savedHold.holdToken,
+        expiresAt: savedHold.expiresAt,
+        status: savedHold.status,
+        showtimeSeatId,
+        seatLabel: showtimeSeat.seat?.seatLabel ??
+          `${showtimeSeat.seat?.seatRow ?? ''}${showtimeSeat.seat?.seatNumber ?? ''}`,
+        price: Number(showtimeSeat.price),
+        showtimeInfo: {
+          movieTitle: showtimeSeat.showtime?.movie?.title ?? '',
+          startTime: showtimeSeat.showtime?.startTime,
+          cinemaName: showtimeSeat.showtime?.room?.cinema?.cinemaName,
+        },
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async holdMultipleSeats(userId: number, dto: HoldSeatsDto): Promise<HoldResponseDto[]> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const { showtimeSeatIds, holdMinutes = 10 } = dto;
+
+      if (!showtimeSeatIds || showtimeSeatIds.length === 0) {
+        throw new BadRequestException('Danh sách ghế không hợp lệ');
+      }
+
+      const showtimeSeats = await queryRunner.manager.find(ShowtimeSeat, {
+        where: { showtimeSeatId: In(showtimeSeatIds) },
+        relations: ['showtime', 'showtime.movie', 'showtime.room', 'showtime.room.cinema', 'seat'],
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (showtimeSeats.length !== showtimeSeatIds.length) {
+        throw new NotFoundException('Một hoặc nhiều ghế không tồn tại');
+      }
+
+      const showtimeId = showtimeSeats[0].showtimeId;
+      const sameShowtime = showtimeSeats.every((seat) => seat.showtimeId === showtimeId);
+
+      if (!sameShowtime) {
+        throw new BadRequestException('Tất cả ghế phải thuộc cùng một suất chiếu');
+      }
+
+      const notAvailable = showtimeSeats.filter((seat) => seat.status !== 'AVAILABLE');
+
+      if (notAvailable.length > 0) {
+        throw new BadRequestException(
+          `Các ghế không còn trống: ${notAvailable
+            .map((seat) => seat.seat?.seatLabel ?? `${seat.seat?.seatRow ?? ''}${seat.seat?.seatNumber ?? ''}`)
+            .join(', ')}`,
+        );
+      }
+
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + holdMinutes);
+
+      const responses: HoldResponseDto[] = [];
+
+      for (const showtimeSeat of showtimeSeats) {
+        await queryRunner.manager.update(ShowtimeSeat, { showtimeSeatId: showtimeSeat.showtimeSeatId }, {
+          status: 'HELD',
+          heldByUserId: userId,
+          holdExpiresAt: expiresAt,
+        });
+
+        const hold = queryRunner.manager.create(SeatHold, {
+          userId,
+          showtimeSeatId: showtimeSeat.showtimeSeatId,
+          expiresAt,
+          status: SeatHoldStatus.ACTIVE,
+        });
+
+        let savedHold: SeatHold;
+        try {
+          savedHold = await queryRunner.manager.save(SeatHold, hold);
+        } catch (err: any) {
+          if (err?.number === 2601 || err?.number === 2627 || err?.code === 'ER_DUP_ENTRY') {
+            throw new ConflictException(
+              `Ghế ${showtimeSeat.seat?.seatLabel ?? showtimeSeat.showtimeSeatId} đang được giữ bởi người dùng khác`,
+            );
+          }
+          throw err;
+        }
+
+        responses.push({
+          holdId: savedHold.holdId,
+          holdToken: savedHold.holdToken,
+          expiresAt: savedHold.expiresAt,
+          status: savedHold.status,
+          showtimeSeatId: showtimeSeat.showtimeSeatId,
+          seatLabel: showtimeSeat.seat?.seatLabel ??
+            `${showtimeSeat.seat?.seatRow ?? ''}${showtimeSeat.seat?.seatNumber ?? ''}`,
+          price: Number(showtimeSeat.price),
+          showtimeInfo: {
+            movieTitle: showtimeSeat.showtime?.movie?.title ?? '',
+            startTime: showtimeSeat.showtime?.startTime,
+            cinemaName: showtimeSeat.showtime?.room?.cinema?.cinemaName,
+          },
+        });
+      }
+
+      await queryRunner.commitTransaction();
+      return responses;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async getUserHolds(userId: number) {
+    const holds = await this.seatHoldRepository.find({
+      where: { userId, status: SeatHoldStatus.ACTIVE },
+      relations: [
+        'showtimeSeat',
+        'showtimeSeat.seat',
+        'showtimeSeat.showtime',
+        'showtimeSeat.showtime.movie',
+        'showtimeSeat.showtime.room',
+        'showtimeSeat.showtime.room.cinema',
+      ],
+      order: { createdAt: 'DESC' },
+    });
+
+    return holds.map((hold) => ({
+      holdId: hold.holdId,
+      holdToken: hold.holdToken,
+      expiresAt: hold.expiresAt,
+      status: hold.status,
+      showtimeSeatId: hold.showtimeSeat?.showtimeSeatId,
+      seatLabel:
+        hold.showtimeSeat?.seat?.seatLabel ??
+        `${hold.showtimeSeat?.seat?.seatRow ?? ''}${hold.showtimeSeat?.seat?.seatNumber ?? ''}`,
+      price: hold.showtimeSeat ? Number(hold.showtimeSeat.price) : 0,
+      showtimeInfo: hold.showtimeSeat?.showtime
+        ? {
+            movieTitle: hold.showtimeSeat.showtime.movie?.title ?? '',
+            startTime: hold.showtimeSeat.showtime.startTime,
+            cinemaName: hold.showtimeSeat.showtime.room?.cinema?.cinemaName,
+          }
+        : undefined,
+    }));
+  }
+
+  async getActiveHoldsForSeats(
+    userId: number,
+    showtimeSeatIds: number[],
+  ): Promise<SeatHold[]> {
+    if (!showtimeSeatIds.length) return [];
+
+    const now = new Date();
+    const holds = await this.seatHoldRepository.find({
+      where: {
+        userId,
+        showtimeSeatId: In(showtimeSeatIds),
+        status: SeatHoldStatus.ACTIVE,
+      },
+      order: { createdAt: 'DESC' },
+    });
+
+    const latestBySeat = new Map<number, SeatHold>();
+    for (const hold of holds) {
+      if (new Date(hold.expiresAt) <= now) continue;
+      if (!latestBySeat.has(hold.showtimeSeatId)) {
+        latestBySeat.set(hold.showtimeSeatId, hold);
+      }
+    }
+
+    return [...latestBySeat.values()];
+  }
+
+  async getHoldDetails(holdId: string, userId: number) {
+    const hold = await this.seatHoldRepository.findOne({
+      where: { holdId, userId },
+      relations: [
+        'showtimeSeat',
+        'showtimeSeat.seat',
+        'showtimeSeat.showtime',
+        'showtimeSeat.showtime.movie',
+        'showtimeSeat.showtime.room',
+        'showtimeSeat.showtime.room.cinema',
+      ],
+    });
+
+    if (!hold) throw new NotFoundException('Không tìm thấy thông tin hold');
+
+    return {
+      holdId: hold.holdId,
+      holdToken: hold.holdToken,
+      expiresAt: hold.expiresAt,
+      releasedAt: hold.releasedAt,
+      status: hold.status,
+      showtimeSeatId: hold.showtimeSeat?.showtimeSeatId,
+      seatLabel:
+        hold.showtimeSeat?.seat?.seatLabel ??
+        `${hold.showtimeSeat?.seat?.seatRow ?? ''}${hold.showtimeSeat?.seat?.seatNumber ?? ''}`,
+      price: hold.showtimeSeat ? Number(hold.showtimeSeat.price) : 0,
+      showtimeInfo: hold.showtimeSeat?.showtime
+        ? {
+            movieTitle: hold.showtimeSeat.showtime.movie?.title ?? '',
+            startTime: hold.showtimeSeat.showtime.startTime,
+            cinemaName: hold.showtimeSeat.showtime.room?.cinema?.cinemaName,
+          }
+        : undefined,
+    };
+  }
+
+  async releaseHold(holdId: string, userId: number) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const snapshot = await queryRunner.manager.findOne(SeatHold, {
+        where: { holdId, userId, status: SeatHoldStatus.ACTIVE },
+      });
+
+      if (!snapshot) {
+        throw new NotFoundException('Không tìm thấy hold hợp lệ');
+      }
+
+      // Lock order phải giống createBooking: seat -> hold.
+      const lockedSeat = await queryRunner.manager.findOne(ShowtimeSeat, {
+        where: { showtimeSeatId: snapshot.showtimeSeatId },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!lockedSeat) {
+        throw new NotFoundException('Ghế của hold không còn tồn tại');
+      }
+
+      const hold = await queryRunner.manager.findOne(SeatHold, {
+        where: { holdId, userId, status: SeatHoldStatus.ACTIVE },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!hold) {
+        throw new ConflictException(
+          'Hold đã được xử lý bởi request khác, không thể nhả ghế',
+        );
+      }
+
+      const cancelled = await queryRunner.manager.update(
+        SeatHold,
+        { holdId, userId, status: SeatHoldStatus.ACTIVE },
+        { status: SeatHoldStatus.CANCELLED, releasedAt: new Date() },
+      );
+
+      if ((cancelled.affected ?? 0) !== 1) {
+        throw new ConflictException(
+          'Hold đã thay đổi trạng thái trong lúc giải phóng',
+        );
+      }
+
+      const releasedRows = (await queryRunner.manager.query(
+        `
+          UPDATE ss
+          SET
+            ss.status = 'AVAILABLE',
+            ss.held_by_user_id = NULL,
+            ss.hold_expires_at = NULL
+          OUTPUT INSERTED.showtime_seat_id AS showtime_seat_id
+          FROM dbo.showtime_seats AS ss WITH (UPDLOCK, ROWLOCK)
+          WHERE ss.showtime_seat_id = @0
+            AND ss.status = 'HELD'
+            AND ss.held_by_user_id = @1
+            AND NOT EXISTS (
+              SELECT 1
+              FROM dbo.seat_holds AS active_hold
+              WHERE active_hold.showtime_seat_id = ss.showtime_seat_id
+                AND active_hold.status = 'ACTIVE'
+            )
+            AND NOT EXISTS (
+              SELECT 1
+              FROM dbo.booking_details AS bd
+              INNER JOIN dbo.booking_orders AS bo
+                ON bo.booking_id = bd.booking_id
+              WHERE bd.showtime_seat_id = ss.showtime_seat_id
+                AND bd.status = 'ACTIVE'
+                AND bo.status IN ('PENDING_PAYMENT', 'PAID', 'ISSUED', 'CONFIRMED')
+            );
+        `,
+        [hold.showtimeSeatId, userId],
+      )) as Array<{ showtime_seat_id: number }>;
+
+      await queryRunner.commitTransaction();
+
+      return {
+        success: true,
+        holdId,
+        releasedSeat: releasedRows.length === 1,
+      };
+    } catch (error) {
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+}

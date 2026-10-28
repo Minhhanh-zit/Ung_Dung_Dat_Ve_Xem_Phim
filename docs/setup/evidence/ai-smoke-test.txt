@@ -1,0 +1,8 @@
+Dữ liệu quá ít (14 tương tác / 6 user / 8 phim) -> bỏ qua SVD. Gợi ý sẽ dựa vào Content + Popularity.
+User 1 (mê hành động, đã xem phim 1 & 2) -> gợi ý: [3, 4, 5]
+User 999 (chưa từng đặt vé)     -> gợi ý: [1, 5, 2]
+Lưu và nạp lại model: OK
+[SVD] User 1 trong bộ dữ liệu lớn -> gợi ý: [4, 13, 1, 25, 22]
+
+Tất cả kiểm tra đều đạt.
+Exit code: 0

@@ -1,0 +1,69 @@
+
+> cinehunt-backend@1.0.0 test
+> TS_NODE_PROJECT=test/tsconfig.json node --test --require ts-node/register test/*.test.ts
+
+✔ generic admin update rejects role and status fields (10.242167ms)
+✔ avatar validation rejects HTML even when a client could spoof MIME (10.383334ms)
+✔ avatar validation recognizes server-approved image signatures (0.746209ms)
+✔ expirePendingBookings re-check ứng viên dưới transaction lock (34.978291ms)
+✔ cancelBooking không dùng trạng thái stale bên ngoài transaction (7.006042ms)
+✔ safe seat release bảo vệ ACTIVE hold và booking mới (0.829958ms)
+✔ expire scheduler bỏ qua deadline thường của CASH PENDING (0.470917ms)
+[33m[Nest] 49997  - [39m10/27/2026, 4:54:11 PM [33m   WARN[39m [38;5;3m[BookingExpireScheduler] [39m[33mBỏ qua lượt expire booking vì lượt trước chưa hoàn tất.[39m
+✔ BookingExpireScheduler không chạy chồng hai lượt cron (21.75575ms)
+✔ đơn CASH hết hạn đúng 10 phút sau giờ chiếu (42.12325ms)
+✔ không chấp nhận thời gian gia hạn âm (0.720625ms)
+✔ người dùng chỉ được hủy đơn đang chờ thanh toán (0.221875ms)
+✔ admin không được bỏ qua payment hoặc refund flow (0.210916ms)
+✔ ghế vẫn HELD trong lúc booking chờ thanh toán (19.579584ms)
+✔ voucher chỉ hết lượt khi usedCount đạt usageLimit (0.304375ms)
+✔ payment CASH đang chờ không được đổi sang phương thức khác (0.333292ms)
+[32m[Nest] 49999  - [39m10/27/2026, 4:54:13 PM [32m    LOG[39m [38;5;3m[ShowtimeService] [39m[32mHủy suất chiếu #55: đã vô hiệu hóa booking, ticket, hold và khóa toàn bộ ghế[39m
+✔ releaseHold không nhả ghế nếu hold đã được booking xử lý (3.837417ms)
+✔ refund approve hủy ticket trước khi trả ghế (4.427708ms)
+✔ refund approve từ chối ticket USED (1.132958ms)
+✔ cancel showtime vô hiệu hóa ticket/booking/hold và block ghế (4.880041ms)
+✔ HardenOtpCodes references used_at only after the ALTER batch (2.080209ms)
+[33m[Nest] 50041  - [39m10/27/2026, 4:54:16 PM [33m   WARN[39m [38;5;3m[BookingService] [39m[33mBỏ qua lượt expire booking vì lifecycle maintenance đang được job khác xử lý.[39m
+[33m[Nest] 50041  - [39m10/27/2026, 4:54:16 PM [33m   WARN[39m [38;5;3m[ShowtimeSeatsService] [39m[33mBỏ qua lượt sp_release_expired_holds: maintenance-busy[39m
+[33m[Nest] 50041  - [39m10/27/2026, 4:54:16 PM [33m   WARN[39m [38;5;3m[ShowtimeSeatsService] [39m[33mBỏ qua lượt sp_release_expired_holds do SQL đang bận: Timeout: Request failed to complete in 15000ms[39m
+✔ booking expiry bỏ qua ngay khi lifecycle app-lock đang bận (8.228208ms)
+✔ seat hold maintenance hiểu kết quả skipped từ stored procedure (0.658833ms)
+✔ seat hold maintenance không biến driver 15s timeout thành scheduler error (0.958625ms)
+✔ maintenance migration dùng shared app-lock, lock timeout ngắn và expiry indexes (0.73775ms)
+✔ customer cannot access another user payment (2.00425ms)
+✔ customer can cancel or read only their own payment (0.248291ms)
+✔ customer can confirm only MOCK payment in explicitly enabled dev mode (0.183166ms)
+✔ staff and admin may process payments (0.16175ms)
+✔ createPayment chặn CASH PENDING đổi sang phương thức khác dưới booking lock (6.504458ms)
+✔ processPaymentSuccess dùng lock order Booking -> Payment (1.512833ms)
+✔ processPaymentFailed hủy booking bằng lifecycle transaction thay vì fail payment trước (0.758375ms)
+✔ CASH generic confirm không được bỏ qua deadline; check-in flag thì được (0.809375ms)
+✔ retry CASH sau deadline gốc vẫn idempotent khi còn trong grace (0.594083ms)
+✔ retry CASH sau showtime + grace bị chặn ngay cả khi cron chưa chạy (0.57075ms)
+✔ multi-seat hold accepts at most 8 unique seats for at most 10 minutes (26.207375ms)
+✔ single-seat hold rejects a duration above 10 minutes (1.918958ms)
+✔ expired-hold procedure leaves booking expiry to BookingExpireScheduler (8.683458ms)
+✔ harden migration chỉ trả ghế có ACTIVE hold và chặn duplicate PENDING payment (0.622167ms)
+✔ migration rollback khôi phục procedure trước đó và xóa unique index (0.530125ms)
+✔ critical lifecycle migration chặn duplicate refund và idempotency key (0.644041ms)
+[33m[Nest] 50075  - [39m10/27/2026, 4:54:17 PM [33m   WARN[39m [38;5;3m[ShowtimeSeatsService] [39m[33mChưa có stored procedure sp_release_expired_holds — dùng fallback TypeORM. Nên chạy file SQL để tạo procedure (nhanh và an toàn hơn).[39m
+[32m[Nest] 50075  - [39m10/27/2026, 4:54:17 PM [32m    LOG[39m [38;5;3m[ShowtimeSeatsService] [39m[32mFallback: trả lại 2 ghế, đánh dấu 1 hold hết hạn[39m
+✔ getHello trả về trạng thái module hoạt động (2.843333ms)
+✔ getSeatMap báo lỗi khi suất chiếu không tồn tại (0.738875ms)
+✔ getSeatMap trả đúng thông tin suất chiếu và ghế (0.363416ms)
+✔ holdSeat chuyển đúng userId và DTO sang SeatHoldService (0.184375ms)
+✔ holdManySeats chuyển đúng danh sách ghế (0.205334ms)
+✔ releaseHold giải phóng đúng hold của người dùng (0.170333ms)
+✔ expireSeatHolds dùng stored procedure khi chạy thành công (0.385916ms)
+✔ expireSeatHolds dùng fallback khi stored procedure chưa tồn tại (1.760541ms)
+✔ expireSeatHolds báo lỗi khi SQL Server gặp lỗi khác (0.520459ms)
+ℹ tests 49
+ℹ suites 0
+ℹ pass 49
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 20195.167541
+Exit code: 0
