@@ -94,8 +94,8 @@ Bảng dưới đây kế thừa phân công từ báo cáo tuần 1. Đây là 
 - **Mã nguồn Mobile:** https://github.com/Minhhanh-zit/Ung_Dung_Dat_Ve_Xem_Phim/tree/main/mobile
 - **Commit Premium UI:** https://github.com/Minhhanh-zit/Ung_Dung_Dat_Ve_Xem_Phim/commit/e1a8fa1dd0b968118b5cbb4721e48bf48b6d9914
 - **Kiểm thử SQL (Draft PR #51):** https://github.com/Minhhanh-zit/Ung_Dung_Dat_Ve_Xem_Phim/pull/51
-- **Video buổi 2:** https://youtu.be/SKQl2Q5keYc
-- **Video họp giai đoạn đầu:** https://youtu.be/YijEeqPgfxI
+- **Video buổi 2:**[ https://youtu.be/SKQl2Q5keYc](https://youtu.be/D57nEbrBcqk) 
+- **Video họp giai đoạn đầu:** [https://youtu.be/YijEeqPgfxI](https://youtu.be/D57nEbrBcqk)
 
 **Yêu cầu video:** Nhóm cung cấp đường dẫn video họp nhóm, báo cáo tiến độ và demo buổi 2. Thời lượng/nội dung chi tiết của video chưa được xác minh độc lập; trước khi nộp cần kiểm tra video **tối thiểu 10 phút**, có minh chứng họp và demo phù hợp.
 
