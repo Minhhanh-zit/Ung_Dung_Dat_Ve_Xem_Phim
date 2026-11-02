@@ -2,6 +2,8 @@
 
 Backend hệ thống đặt vé xem phim CineHunt — NestJS 10 + TypeORM 0.3 + SQL Server.
 
+> **Cập nhật cấu trúc repo (11/2026):** chạy lệnh từ `backend/` trong repository CineHunt. **File SQL V6.3 nền không nằm trên GitHub**. Phần hướng dẫn schema bên dưới mô tả tài liệu tham chiếu lịch sử, **không phải lệnh có thể thực thi ngay sau khi clone**. Xem [database/README.md](../database/README.md).
+
 ---
 
 ## Yêu cầu môi trường
@@ -24,8 +26,8 @@ Backend hệ thống đặt vé xem phim CineHunt — NestJS 10 + TypeORM 0.3 + 
 ### 1. Clone và cài dependency
 
 ```bash
-cd "San Ve Backend3/cinehunt-backend"
-npm install
+cd backend
+npm ci
 ```
 
 ### 2. Tạo database rỗng trong SQL Server
@@ -36,14 +38,9 @@ CREATE DATABASE CineHuntDB;
 
 ### 3. Chạy file schema gốc + dữ liệu mẫu
 
-Mở SSMS → kết nối tới SQL Server → mở file ở **thư mục gốc của repo**:
+**DỪNG tại đây trên máy clone mới:** SQL V6.3 hiện **không có trong repository**. Không thể tự tạo schema hoàn chỉnh chỉ từ migration.
 
-```
-CineHunt_Database_V6_3_With_Sample_Data.sql
-```
-
-Nhấn **Execute (F5)**. File này tạo toàn bộ bảng nền (users, movies, cinemas,
-showtimes, bookings…) và nạp dữ liệu mẫu.
+Tài liệu gốc từng dùng file `CineHunt_Database_V6_3_With_Sample_Data.sql`, có lệnh `DROP TABLE` và dữ liệu mẫu. **Không chạy lại trên DB đang có dữ liệu**. Trước tiên cần có file schema được rà soát, bản sao lưu và xác nhận database thử nghiệm sạch; xem [hướng dẫn an toàn](../database/README.md).
 
 > 💡 Không có file V6.4 nữa. Bảng `movie_recommendations` trước đây được tạo
 > bằng `CineHunt_Patch_V6_4_Recommendation.sql` — file đó **đã bị xoá** vì
@@ -73,8 +70,12 @@ DB_INSTANCE=SQLEXPRESS
 
 ### 5. Chạy migration
 
+Chỉ khi đã xác minh schema nền và backup database, mới xem xét:
+
 ```bash
-npm run migration:run
+npm run migration:show
+# Khi đã review toàn bộ migration và có backup:
+# npm run migration:run
 ```
 
 Kiểm tra lại bằng:
@@ -152,8 +153,7 @@ duy nhất.** Lý do:
 - `src/entities/movie-recommendation.entity.ts` đang map đúng theo migration
   (`rankOrder`, `algorithm`, PK kiểu `int`). Chọn file SQL làm chuẩn đồng
   nghĩa với việc phải viết lại entity và mọi query dùng nó.
-- Migration có lịch sử lưu trong bảng `typeorm_migrations`, chạy lại không
-  hỏng, revert được. File SQL chạy tay không để lại dấu vết nào.
+- Migration có lịch sử lưu trong bảng `typeorm_migrations`, nhưng **vẫn có thể gây thay đổi/xóa dữ liệu** nếu chạy trên DB không phù hợp. Phải review và backup trước. File SQL chạy tay không để lại dấu vết nào.
 
 Migration `1722300000000-ReconcileMovieRecommendations.ts` tự động dọn giúp
 những máy đã lỡ chạy file SQL patch cũ: nó phát hiện bảng có cột

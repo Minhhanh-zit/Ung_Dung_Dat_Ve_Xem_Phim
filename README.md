@@ -1,139 +1,76 @@
-# CineHunt Mobile
+# CineHunt | Hệ thống đặt vé xem phim
 
-Hệ thống đặt vé xem phim CineHunt Mobile, phát triển ứng dụng di động dành cho khách hàng và tái sử dụng các thành phần hiện có của hệ thống CineHunt.
+**Trạng thái:** bản phát triển / kiểm thử, chưa được xác nhận sẵn sàng production.
 
-## 1. Tổng quan
+CineHunt gồm ứng dụng Mobile cho khách hàng, ứng dụng Web (khách hàng và quản trị), Backend nghiệp vụ, dịch vụ gợi ý phim AI và SQL Server. Đây là repository làm việc độc lập; **không chỉnh sửa repository nguồn**.
 
-CineHunt Mobile hướng tới việc hỗ trợ khách hàng tìm kiếm phim, lựa chọn rạp và suất chiếu, đặt ghế, thanh toán và sử dụng vé QR trên điện thoại.
+## Thành phần
 
-Dự án được phát triển độc lập từ mã nguồn CineHunt hiện có. Repository gốc không bị thay đổi.
+| Đường dẫn | Công nghệ | Vai trò |
+| --- | --- | --- |
+| [mobile/](mobile/) | React Native, **Expo SDK 58**, Expo Router | Tìm phim, chọn suất, ghế, đặt vé, xem đơn và tài khoản |
+| [admin-web/](admin-web/) | React + TypeScript + Vite | Giao diện khách hàng, nhân viên và quản trị |
+| [backend/](backend/) | NestJS + TypeORM | API, xác thực, ghế, đặt vé, thanh toán, vé và quản trị |
+| [ai/](ai/) | Python + FastAPI | Gợi ý phim theo mô hình hoặc fallback popularity |
+| [database/](database/) | SQL Server | **Hiện mới có hướng dẫn; schema SQL gốc chưa được đưa lên GitHub** |
+| [docs/setup/](docs/setup/) | Markdown / log | Minh chứng kiểm tra khởi tạo ngày 27/10/2026 |
 
-## 2. Công nghệ sử dụng
+## Bắt đầu trên máy mới
 
-| Thành phần | Công nghệ |
-|---|---|
-| Mobile | React Native, Expo SDK 57, Expo Router |
-| Backend | NestJS, TypeScript |
-| Frontend Web | React, Vite |
-| AI | Python 3.12, FastAPI, scikit-learn |
-| Database | SQL Server |
-| Quản lý mã nguồn | Git, GitHub |
+**Chuẩn bị:** Node.js và npm phù hợp với các package trong từng thư mục, Python 3.10–3.12 cho AI, SQL Server thử nghiệm riêng. Cài dependencies độc lập trong từng thành phần.
 
-## 3. Cấu trúc thư mục
+1. Clone repository và kiểm tra trạng thái: `git status`.
+2. Tạo file cấu hình **chỉ ở máy cá nhân** từ các mẫu:
+   - `cp backend/.env.example backend/.env`
+   - `cp ai/.env.example ai/.env`
+   - `cp admin-web/.env.example admin-web/.env.local`
+   - `cp mobile/.env.example mobile/.env.local`
+3. Sửa các giá trị placeholder, đặt **mật khẩu SQL Server và hai JWT secret riêng** trong `backend/.env`. Không để giá trị thật trong ví dụ hoặc commit.
+4. Database phải có schema tương thích **trước khi** chạy ứng dụng cần dữ liệu. **SQL V6.3 gốc chưa có trên repository này**: xem [database/README.md](database/README.md); không chạy lại seed hay migration trên DB có dữ liệu thật.
+5. Chạy các dịch vụ từ **đúng thư mục** theo bảng bên dưới.
 
-- `mobile/`: Ứng dụng di động dành cho khách hàng.
-- `backend/`: API và xử lý nghiệp vụ CineHunt.
-- `admin-web/`: Frontend React được tái sử dụng.
-- `ai/`: Dịch vụ AI Recommendation.
-- `database/reference/`: Bộ SQL tham chiếu V6.3.
-- `docs/`: Báo cáo, tài liệu và minh chứng dự án.
+| Thư mục | Cài đặt | Lệnh phát triển / kiểm tra |
+| --- | --- | --- |
+| `backend/` | `npm ci` | `npm run build`, `npm test`, `npm run start:dev` |
+| `admin-web/` | `npm ci` | `npm run build`, `npm test`, `npm run dev` |
+| `mobile/` | `npm ci` | `npx tsc --noEmit`, `npx expo install --check`, `npx expo start --clear --go --lan` |
+| `ai/` | `python3.12 -m venv .venv` và `pip install -r requirements.txt` trong venv | `python smoke_test.py`, `uvicorn app.main:app --host 127.0.0.1 --port 8000` |
 
-Lưu ý: `admin-web/` hiện chứa cả giao diện khách hàng và giao diện quản trị từ mã nguồn gốc. Việc tách riêng sẽ được thực hiện sau khi đánh giá các dependency hiện tại.
+**Cổng khi chạy local:** Backend 3000; Web 5173; AI 8000; Metro Expo mặc định 8081. Backend và AI cần kết nối tới một SQL Server được cấu hình riêng. Trong thử nghiệm trước đây, SQL Server Docker được ánh xạ sang cổng **14332 của máy Mac**; đây chỉ là cấu hình của máy thử nghiệm, không phải mặc định dùng chung.
 
-## 4. Yêu cầu môi trường
+### Cách Mobile kết nối Backend
 
-Môi trường đã được kiểm tra:
+- `mobile/.env.local` phải có `EXPO_PUBLIC_API_URL=http://<IP_MAC_CO_THE_TRUY_CAP>:3000`.
+- Trên iPhone thật, **không** dùng `localhost` làm Backend URL, vì đó là địa chỉ của iPhone.
+- Nếu iPhone dùng 4G và Mac dùng mạng khác, cần kết nối riêng (ví dụ Tailscale) và đảm bảo Backend có thể truy cập từ iPhone.
+- Chỉ khởi động Metro ở **thư mục `mobile/`**. Expo Go phải tương thích SDK 58.
 
-- Node.js 24.18.1.
-- Expo SDK 57.0.31.
-- Python 3.12.13.
-- Expo Go trên iPhone thật.
+### Web và AI
 
-Cần chuẩn bị SQL Server thử nghiệm riêng khi triển khai kiểm thử tích hợp.
+- Web dùng `/api` với Vite proxy tới `http://localhost:3000` khi phát triển; xem `admin-web/.env.example`.
+- Backend gọi AI qua `RECOMMENDATION_SERVICE_URL`; AI có thể dùng `BACKEND_ENV_PATH` để đọc cấu hình DB ở Backend.
+- `POST /train` và `POST /reload` của AI yêu cầu `RECOMMENDATION_ADMIN_TOKEN`. Không mở cổng AI trực tiếp ra Internet.
 
-## 5. Khởi chạy Mobile
+## Phạm vi chức năng và trạng thái xác minh
 
-Từ thư mục `mobile/`:
+- **Mobile:** đã kiểm tra hiển thị 23 phim và các màn Phim / Khám phá / Đơn & vé / Tài khoản trên iPhone (28/10/2026). Có code chi tiết phim, sơ đồ ghế, giữ ghế, checkout, đơn, yêu thích tạm trong bộ nhớ, GPS và chat.
+- **Backend:** có mã nguồn cho đặt vé, xác thực, thanh toán PENDING, check-in, v.v. Các kiểm thử từng chạy ở môi trường phát triển; **không mặc định tất cả luồng đã được nghiệm thu sau khi ghép One-Shot**.
+- **AI:** có mô hình gợi ý và fallback. Khi thiếu dữ liệu tương tác, kết quả có thể chỉ là **phim phổ biến**, không được tuyên bố là gợi ý cá nhân hóa.
+- **Thanh toán:** BANKING/CASH có thể tạo trạng thái chờ; không đồng nghĩa với tiền đã thanh toán. Không tự xác nhận thanh toán giả, không chạy migration/seed thử nghiệm trên DB đang dùng.
+- **Bảo mật:** repository **public**. Mọi `.env`, khóa API, JWT, mật khẩu, file DB/backup, model nhị phân và ảnh tải lên phải nằm ngoài Git. Kiểm tra tự động trước đây không thay thế việc rà soát bí mật thủ công.
 
-1. Cài đặt thư viện: `npm ci`
-2. Khởi động Expo: `npx expo start --lan`
-3. Mở Expo Go trên iPhone và quét mã QR.
+Thông tin **CV01 ngày 27/10/2026** trong [docs/setup/validation-report.md](docs/setup/validation-report.md) là báo cáo lịch sử của thời điểm SDK 57, không phải mô tả phiên bản đang có trên `main`.
 
-Mobile hiện sử dụng giao diện khởi tạo Expo. Các màn hình nghiệp vụ đặt vé sẽ được phát triển trong những công việc tiếp theo.
+## Hạn chế còn lại
 
-## 6. Frontend React
+1. Chưa có bản schema SQL gốc an toàn để người khác clone repo và tự dựng DB mới.
+2. Mobile hiện giữ JWT và danh sách yêu thích trong RAM, không lưu vững bền qua lần mở ứng dụng.
+3. Chưa có ảnh poster thật hoàn chỉnh cho danh sách phim; cần kiểm tra UI/UX trên nhiều kích thước màn hình.
+4. Các luồng thanh toán thật, webhook, QR và soát vé cần kiểm thử tích hợp theo vai trò trước khi phát hành.
+5. Cần tiếp tục rà soát npm audit và cấu hình production, không xem repository này là cấu hình production hoàn chỉnh.
 
-Từ thư mục `admin-web/`:
+## Nguồn và quy tắc cộng tác
 
-1. Cài thư viện: `npm ci`
-2. Build: `npm run build`
-3. Kiểm thử: `npm test`
-4. Kiểm tra ESLint: `npm run lint`
-5. Chạy giao diện: `npm run dev`
-
-Frontend cần Backend hoạt động để tải dữ liệu phim, suất chiếu và các thông tin nghiệp vụ.
-
-## 7. Backend NestJS
-
-Từ thư mục `backend/`:
-
-1. Cài thư viện: `npm ci`
-2. Build: `npm run build`
-3. Kiểm thử: `npm test`
-
-Chưa chạy `npm run start:stack` hoặc migration khi chưa cấu hình database thử nghiệm an toàn.
-
-## 8. Dịch vụ AI
-
-Từ thư mục `ai/`:
-
-1. Tạo môi trường ảo: `python3.12 -m venv .venv`
-2. Kích hoạt: `source .venv/bin/activate`
-3. Cài thư viện: `python -m pip install -r requirements.txt`
-4. Kiểm tra thư viện: `python -m pip check`
-5. Chạy smoke test: `python smoke_test.py`
-6. Thoát môi trường: `deactivate`
-
-Smoke test sử dụng dữ liệu giả, không yêu cầu SQL Server.
-
-## 9. Cấu hình Backend và AI
-
-- Backend hỗ trợ `RECOMMENDATION_SERVICE_DIR` để xác định thư mục AI.
-- AI hỗ trợ `BACKEND_ENV_PATH` để xác định file cấu hình Backend.
-- Cần tạo cấu hình môi trường từ các file `.env.example` phù hợp.
-- Không đưa mật khẩu, token hoặc file `.env` lên GitHub.
-
-Tại thời điểm kiểm tra CV01, `backend/.env` chưa được tạo và chưa xác nhận tích hợp Backend với AI.
-
-## 10. Kết quả kiểm thử CV01
-
-| Thành phần | Kết quả |
-|---|---|
-| Mobile | Chạy giao diện Expo trên iPhone thật |
-| Frontend Build | PASS |
-| Frontend Test | 40/40 PASS |
-| Frontend ESLint | PASS |
-| Backend Build | PASS |
-| Backend Test | 49/49 PASS |
-| AI Smoke Test | PASS, exit code 0 |
-| SQL Server Integration | Chưa kiểm thử |
-| Backend - AI Integration | Chưa kiểm thử |
-
-Expo Doctor đạt 20/21 bài kiểm tra. Xcode 26.0.1 không đáp ứng yêu cầu Xcode >= 26.4.0 của SDK hiện tại.
-
-## 11. Các hạn chế cần xử lý
-
-- Mobile chưa có các màn hình nghiệp vụ CineHunt.
-- Frontend từng gặp ECONNREFUSED do Backend chưa khởi động.
-- Backend có 20 cảnh báo bảo mật production dependency, gồm 1 Critical.
-- Chưa kiểm thử tích hợp SQL Server.
-- Chưa kiểm thử kết nối Backend - AI.
-- Chưa xác nhận hệ thống sẵn sàng triển khai công khai.
-
-Bộ SQL tham chiếu V6.3 có lệnh DROP TABLE. Không chạy trên cơ sở dữ liệu chứa dữ liệu cần giữ.
-
-## 12. Tài liệu dự án
-
-- `docs/setup/original_commit.txt`
-- `docs/setup/source-inventory.md`
-- `docs/setup/validation-report.md`
-
-## 13. Repository
-
-Repository nguồn:
-https://github.com/Cuaaaaa2504/-n-chuy-n-ng-nh
-
-Repository CineHunt Mobile:
-https://github.com/Minhhanh-zit/Ung_Dung_Dat_Ve_Xem_Phim
-
-Repository nguồn được giữ nguyên. Các thay đổi tại repository CineHunt Mobile phải được kiểm tra và phê duyệt trước khi commit hoặc push.
+- Repository làm việc: https://github.com/Minhhanh-zit/Ung_Dung_Dat_Ve_Xem_Phim
+- Repository nguồn tham chiếu (chỉ đọc): https://github.com/Cuaaaaa2504/-n-chuy-n-ng-nh
+- Ưu tiên thay đổi trên branch, mở Pull Request và chỉ merge khi đã review. Không force-push `main`, không commit file bí mật.
