@@ -2,6 +2,8 @@
 
 Service Python (FastAPI) phục vụ gợi ý phim cá nhân hoá cho CineHunt.
 
+> **Cập nhật 11/2026:** các đường dẫn dưới đây áp dụng cho thư mục `ai/` của repository này. Chỉ gọi gợi ý là **cá nhân hóa** khi có đủ tương tác và model phù hợp; fallback popularity không cá nhân hóa. Không xem đây là cấu hình production hoàn chỉnh.
+
 Đây là bản production hoá của notebook
 `movie_recommendation_v7_balanced_format_input_features_reviewed`.
 
@@ -14,9 +16,7 @@ CineHunt.** Không thể chạy notebook, export ra `.pkl` rồi đem dùng th�
 `UserID`/`MovieID` của MovieLens không có quan hệ gì với `user_id`/`movie_id`
 trong `CineHuntDB`. Gợi ý sẽ trỏ vào những phim không tồn tại.
 
-Ngoài ra, **CineHunt không có bảng rating**. Kiểm tra
-`CineHunt_Database_V6_3_With_Sample_Data.sql`: 28 bảng, không có bảng nào lưu
-điểm người dùng chấm cho phim.
+SQL V6.3 tham chiếu trước đây không có bảng rating; tuy nhiên **repository hiện có module và migration movie-rating**. Cần đối chiếu schema thực tế trước khi kết luận về bảng rating. Dịch vụ gợi ý hiện đọc tương tác ngầm từ lịch sử đặt vé hợp lệ trong `ai/app/db.py`.
 
 Vì vậy service này giữ nguyên **thuật toán** của notebook nhưng **huấn luyện
 lại trên dữ liệu thật của CineHunt**, dùng tín hiệu ngầm từ hành vi đặt vé:
@@ -40,7 +40,7 @@ vào `HybridRecommender._blend()`.
 Yêu cầu: Python 3.10–3.12, SQL Server đã có `CineHuntDB`.
 
 ```bash
-cd recommendation-service
+cd ai
 
 python -m venv .venv
 # Windows:
@@ -53,11 +53,11 @@ pip install -r requirements.txt
 cp .env.example .env      # Windows: copy .env.example .env
 ```
 
-Mở `.env` và điền `DB_PASSWORD` (cùng giá trị đang dùng cho backend NestJS).
+File mẫu mặc định dùng `BACKEND_ENV_PATH=../backend/.env` để kế thừa biến DB của Backend. Nếu không kế thừa, đặt giá trị DB trong **ai/.env riêng ở máy**, không đưa lên Git. Giữ `RECOMMENDATION_ADMIN_TOKEN` bí mật nếu sử dụng API quản trị.
 
 ### ODBC Driver
 
-`pyodbc` cần **ODBC Driver 17 for SQL Server** cài sẵn ở hệ điều hành.
+`pyodbc` cần **ODBC Driver 17 hoặc 18 for SQL Server** cài sẵn ở hệ điều hành.
 Thiếu nó sẽ nhận lỗi `Can't open lib 'ODBC Driver 17 for SQL Server'` — pip
 install thành công không có nghĩa là driver đã có.
 
@@ -81,8 +81,10 @@ tĩnh 1433 thay vì đặt `DB_INSTANCE`.
 ### Bước 1 — Tạo bảng cache (chỉ làm một lần)
 
 ```bash
-cd "../San Ve Backend3/cinehunt-backend"
-npm run migration:run
+cd ../backend
+# Chi sau khi da review schema, migration va sao luu DB:
+# npm run migration:run
+cd ../ai
 ```
 
 Lệnh này chạy migration `1722200000000-AddMovieRecommendations`, tạo bảng
@@ -108,7 +110,7 @@ python train.py --top-n 20      # đổi số phim lưu cache
 ### Bước 3 — Chạy server
 
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 Kiểm tra nhanh:
@@ -126,7 +128,9 @@ Tài liệu API tự sinh: <http://localhost:8000/docs>
 Nạp lại mà không cần restart:
 
 ```bash
-curl -X POST http://localhost:8000/reload
+curl -X POST \
+  -H 'X-Recommendation-Admin-Token: <TOKEN_DA_CAU_HINH>' \
+  http://127.0.0.1:8000/reload
 ```
 
 ---
@@ -139,7 +143,7 @@ Dữ liệu đặt vé thay đổi hàng ngày. Train một lần rồi để đ
 **Linux (cron)** — 3 giờ sáng mỗi ngày:
 
 ```
-0 3 * * * cd /duong/dan/recommendation-service && .venv/bin/python train.py && curl -s -X POST http://localhost:8000/reload
+0 3 * * * cd /duong/dan/Cinehunt/ai && .venv/bin/python train.py
 ```
 
 **Windows** — Task Scheduler, chạy `.venv\Scripts\python.exe train.py`.
@@ -148,7 +152,7 @@ Dữ liệu đặt vé thay đổi hàng ngày. Train một lần rồi để đ
 
 ## 5. API
 
-Hợp đồng này **phải khớp** với `src/movie/recommendation.service.ts` bên NestJS.
+Hợp đồng này **phải khớp** với `backend/src/recommendation/recommendation.service.ts` bên NestJS.
 
 ### `GET /recommend/{user_id}?limit=10`
 
@@ -173,10 +177,7 @@ Hợp đồng này **phải khớp** với `src/movie/recommendation.service.ts`
 | `CACHE`      | Chưa train xong / chưa nạp được model → đọc bảng cache    |
 | `POPULARITY` | Không có cả hai → phim được đặt nhiều nhất 90 ngày qua    |
 
-Service **không bao giờ trả 500** cho endpoint này. Kể cả khi SQL Server chết,
-nó trả 200 với danh sách rỗng, vì NestJS đã có lớp fallback riêng
-(`findTopBookedMovieIds`). Ném 500 sang đó chỉ làm bẩn log chứ không đổi thứ
-người dùng nhìn thấy.
+Handler FastAPI có cơ chế bắt lỗi truy vấn DB và fallback về danh sách rỗng/phổ biến trong nhiều trường hợp. **Không được coi đó là bảo đảm không bao giờ trả HTTP 500**; cần theo dõi log và kiểm thử lỗi kết nối thật. NestJS có thêm fallback qua `findTopBookedMovieIds`.
 
 ### `GET /health`
 
@@ -184,9 +185,7 @@ Trạng thái service + thông tin model đang nạp. Dùng cho Docker healthche
 
 ### `POST /reload`
 
-Nạp lại file model. **Không có xác thực** — chỉ để service lắng nghe trong
-mạng nội bộ, đừng mở cổng 8000 ra Internet. Frontend không bao giờ gọi thẳng
-vào service này; mọi thứ đi qua NestJS.
+Nạp lại file model. **Bắt buộc gửi header `X-Recommendation-Admin-Token`** khớp với `RECOMMENDATION_ADMIN_TOKEN` ở máy chạy AI; nếu chưa cấu hình token, endpoint từ chối. `POST /train` cũng yêu cầu token này. Không mở cổng 8000 ra Internet. Frontend đi qua NestJS.
 
 ---
 
@@ -236,7 +235,7 @@ này (`http://recommendation-service:8000`), không phải `localhost`.
 ## 9. Cấu trúc thư mục
 
 ```
-recommendation-service/
+ai/
 ├── app/
 │   ├── config.py     Đọc .env, dựng chuỗi kết nối SQLAlchemy
 │   ├── db.py         Truy vấn DB: đọc tương tác/phim, ghi bảng cache
