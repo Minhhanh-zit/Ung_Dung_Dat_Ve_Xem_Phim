@@ -1,56 +1,46 @@
-# Welcome to your Expo app 👋
+# CineHunt Mobile (Expo SDK 58)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Ứng dụng đặt vé CineHunt bằng **React Native + Expo SDK 58 + Expo Router**. Mã chạy trong `src/cinehunt/`, được mount từ `src/app/index.tsx`.
 
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Chạy trên máy phát triển
 
 ```bash
-npm run reset-project
+cd mobile
+npm ci
+cp .env.example .env.local
+# Sửa EXPO_PUBLIC_API_URL thành địa chỉ Backend mà điện thoại truy cập được
+npx tsc --noEmit
+npx expo install --check
+npx expo start --clear --go --lan
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Mở bằng **Expo Go tương thích SDK 58**. Khi sửa cấu hình môi trường hoặc cài native packages, tắt Metro và mở lại. Không dùng lệnh `npm run reset-project`: đây là script của template Expo, **không phục vụ ứng dụng CineHunt hiện tại**.
 
-### Other setup steps
+## Kết nối iPhone thật
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+`EXPO_PUBLIC_API_URL` phải trỏ tới Backend đang hoạt động, ví dụ `http://<IP_MAC_TRUY_CAP_DUOC>:3000`. `localhost` trên iPhone **không phải** Mac.
 
-## Learn more
+Nếu hai thiết bị ở khác mạng, có thể dùng Tailscale. Khi Metro không tìm thấy thiết bị, hãy kiểm tra cùng mạng/VPN và cổng 8081; với Tailscale, có thể đặt `EXPO_PACKAGER_PROXY_URL=http://<TAILSCALE_IP_MAC>:8081` trước lệnh `npx expo start --clear --go --lan --port 8081`.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Các màn hình hiện có
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- **Phim:** danh sách, tìm kiếm, lọc, chi tiết và lịch chiếu.
+- **Đặt vé:** chọn ghế theo API, giữ ghế có thời hạn, tối đa 8 ghế, chọn combo/voucher, tạo booking.
+- **Đơn & vé:** lịch sử, chi tiết booking, thanh toán trạng thái chờ, xem vé khi Backend đã phát hành.
+- **Khám phá:** rạp, combo, gợi ý phim từ Backend (có thể fallback popularity), tìm rạp bằng GPS và chatbot tùy cấu hình.
+- **Tài khoản:** đăng nhập, đăng ký, hồ sơ; một số thao tác nhân viên cần quyền STAFF/ADMIN.
 
-## Join the community
+**Giới hạn:** JWT và yêu thích được lưu trong RAM, mất khi tải lại ứng dụng; poster phim có thể chỉ là placeholder. Giao diện chạy được **không đồng nghĩa** toàn bộ nghiệp vụ hoặc thanh toán đã qua nghiệm thu.
 
-Join our community of developers creating universal apps.
+## Kiểm thử an toàn
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+cd mobile
+npx tsc --noEmit
+npx expo install --check
+git diff --check
+```
+
+Không chạy seed/migration SQL từ Mobile. Chỉ thử thanh toán với các phương thức Backend đang bật và không gọi endpoint xác nhận thành công giả.
+
+Xem [README dự án](../README.md) và [cấu hình mẫu](.env.example).
