@@ -44,7 +44,20 @@ Muốn kiểm tra **tương thích TypeORM migrations trên database thử nghi�
 node database/review-candidate/validate-isolated.mjs --execute --migrations
 ```
 
-Ở lệnh trên, TypeORM chỉ nhận **host/port ngẫu nhiên của container test**, không dùng `DB_HOST` hay `DB_PORT` đang có trong `.env` trên máy. **Không** chạy `npm run migration:run` độc lập, vì lệnh đó có thể trỏ vào SQL Server hiện tại.
+Ở lệnh trên, TypeORM chỉ nhận **host/port ngẫu nhiên của container test**, không dùng `DB_HOST` hay `DB_PORT` đang có trong `.env` trên máy.
+
+## Bước 3. Thêm SQL integration tests (trên container cô lập)
+
+Sau khi script ở Bước 2 đã PASS, có thể chạy tiếp bộ SQL integration tests có sẵn của Backend trong **cùng chu kỳ tạo schema/seed/migration trên container tạm**:
+
+```bash
+node database/review-candidate/validate-isolated.mjs --execute --migrations --sql-integration
+```
+
+Tùy chọn `--sql-integration` **bắt buộc** có `--migrations` và `--execute`. Trình kiểm thử tạo một container mới, **không kết nối `backend/.env` hiện tại**, và ép các biến kết nối DB vào đúng cổng localhost ngẫu nhiên. Nó gọi `npm run test:integration:sql` trong `backend/`, để kiểm tra bảng/cột, index, constraint, rollback, lịch sử migration và procedure giải phóng hold. Sau đó xóa container tạm và ghi báo cáo JSON vào Desktop.
+
+**Phân biệt:** đây là SQL integration tests, **chưa phải API E2E** (không gọi HTTP đăng ký/booking/payment). Bài `backend/test/e2e-critical-lifecycle.mjs` có tạo suất, xác nhận thanh toán và hoàn tiền, chỉ được chạy sau khi dựng Backend test riêng cùng dữ liệu/role test; tuyệt đối không chạy nhầm vào Backend/database hiện tại. Chưa được khẳng định `--sql-integration` PASS nếu chưa nhận log Terminal xác minh.
+ **Không** chạy `npm run migration:run` độc lập, vì lệnh đó có thể trỏ vào SQL Server hiện tại.
 
 Nếu image SQL Server của bạn đặt tên khác, xem `docker images` và đặt `CINEHUNT_REVIEW_SQL_IMAGE` khi chạy (chỉ dùng image tin cậy đã có trên máy).
 
