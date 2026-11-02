@@ -1,3 +1,5 @@
+> **Cập nhật trạng thái 02/11/2026:** Kết luận *chưa chạy SQL Server* bên dưới là trạng thái tại thời điểm **tách file ban đầu**. Sau đó chủ repo đã chạy `validate-isolated.mjs --execute --migrations` trên SQL Server 2022 container riêng và cung cấp log **PASS**: schema 87/87 batches, seed 25/25 batches, 29 bảng, 12 procedures, 8 triggers, 3 views, TypeORM migrations PASS, container đã dọn. Bản JSON chi tiết hiện chỉ có trên Mac. **Chưa nghiệm thu nghiệp vụ API, chưa merge main**. Xem [STATUS.md](STATUS.md).
+
 # BÁO CÁO RÀ SOÁT SQL CINEHUNT | 02/11/2026
 
 **Kết luận:** KHÔNG đưa bản gốc lên repository GitHub công khai và KHÔNG chạy lại trên `CineHuntDB` hiện có. Bản tách `schema.sql` và `sample-data.sql` là **bản ứng viên để review**, đã qua kiểm tra cấu trúc tĩnh nhưng **chưa được thực thi hoặc nghiệm thu trên SQL Server mới**.
@@ -51,7 +53,7 @@
 - Các batch kiểm tra/print trung gian, lệnh thống kê fullscan, thay đổi cấp database gây ngắt kết nối.
 - Các lệnh ALTER constraint trung gian đã được chuyển thành constraint cuối trong bảng mới.
 
-## 4. Điểm chưa thể xác minh
+## 4. Điểm chưa thể xác minh tại thời điểm tách tĩnh (đã có kiểm thử SQL cô lập sau đó)
 
 1. **Chưa chạy compile/execute trên Microsoft SQL Server.** Một script qua kiểm tra tĩnh chưa đảm bảo đúng mọi phụ thuộc FK, trigger, batch hay procedure.
 2. **Chưa xác nhận mức độ tương thích với 12+ migration TypeORM hiện có trong `backend/src/migrations` của GitHub**. Schema gốc có `movie_ratings` (dòng 269 trở đi); các migration Backend cũng liên quan rating, OTP, booking, v.v. Chạy chồng có thể gây xung đột.
@@ -59,7 +61,7 @@
 4. Chưa kiểm chứng email, poster và thông tin địa điểm của dữ liệu demo; **không sử dụng làm dữ liệu kinh doanh thật**.
 5. Không thể bảo đảm tệp gốc không còn dữ liệu nhạy cảm khác nếu không có đối chiếu nguồn tổ chức; phần ADMIN đã được loại có chủ đích.
 
-## 5. Quy trình triển khai kiểm thử AN TOÀN (chưa thực hiện)
+## 5. Quy trình triển khai kiểm thử AN TOÀN (đã được thực hiện trên instance riêng, chưa áp dụng hệ thống thật)
 
 1. Sao lưu và xác nhận độc lập database đang dùng. **Không chạy hai tệp này trên database hiện tại**.
 2. Chuẩn bị **SQL Server/container thử nghiệm hoàn toàn riêng**, không trỏ vào cổng/database production. Nếu cần giữ tên `CineHuntDB`, dùng SQL Server instance/container riêng.
@@ -69,7 +71,7 @@
 6. Kiểm thử API/backend bằng tài khoản tạo qua luồng đăng ký an toàn; **không tự seed ADMIN mật khẩu mặc định**.
 7. Đối chiếu TypeORM migrations, xác minh đường đi từ môi trường sạch; chỉ đưa PR public sau khi có biên bản PASS. Nếu muốn bật `READ_COMMITTED_SNAPSHOT`, viết plan migration riêng cho DBA review.
 
-## 6. Điều kiện trước khi đưa lên GitHub public
+## 6. Checklist lịch sử trước khi đưa lên GitHub public (tại thời điểm tách tĩnh)
 
 - [x] Xóa seed ADMIN cố định và hash mật khẩu khỏi file mẫu chia sẻ
 - [x] Loại những lệnh reset/drop bảng/database khỏi `schema.sql`
@@ -81,3 +83,14 @@
 - [ ] Người sở hữu repo xác nhận PR trước khi merge `main`
 
 **Trạng thái:** **DRAFT / REVIEW ONLY**. Không tự động push file SQL, không chạy lệnh SQL, không thay đổi SQL Server hiện tại.
+
+## 7. Cập nhật xác minh trên nhánh review (02/11/2026)
+
+- [x] Script review đã được push lên nhánh PR #51 (commit `298e89a`).
+- [x] Theo log từ máy người dùng, Docker SQL Server tách biệt chạy **schema / seed / migrations PASS**.
+- [x] Script tự dọn container sau kiểm thử.
+- [ ] Chưa xác minh nghiệp vụ API kết nối đủ Mobile/Web/Backend; kiểm thử DB đơn thuần chưa thay thế kiểm thử ứng dụng.
+- [ ] Báo cáo JSON chi tiết chưa được đính kèm PR.
+- [ ] Chưa duyệt merge PR #51 vào `main`.
+
+Các checkbox còn trống trong Mục 6 là checklist tại thời điểm tách tĩnh và phải được đọc cùng cập nhật này, không phản ánh trạng thái mới nhất.
