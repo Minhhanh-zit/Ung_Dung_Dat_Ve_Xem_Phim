@@ -2,7 +2,7 @@
 
 **TRẠNG THÁI: DRAFT / CHƯA NGHIỆM THU. Không chạy trên database CineHuntDB hiện tại.**
 
-Nguồn: `CineHunt_Database_V6_3_With_Sample_Data.sql`, SHA-256 ghi trong `manifest.json`. Việc tách file đã qua **kiểm tra tĩnh**, **chưa chạy Microsoft SQL Server thật**.
+Nguồn: `CineHunt_Database_V6_3_With_Sample_Data.sql`, SHA-256 ghi trong `manifest.json`. Việc tách file đã qua kiểm tra tĩnh. **Ngày 02/11/2026, theo log Terminal do chủ repo cung cấp, bản ứng viên đã PASS bài kiểm thử trên SQL Server 2022 container cô lập** (schema 87/87 batches, seed 25/25, TypeORM migrations PASS). Chưa kiểm thử toàn bộ nghiệp vụ qua API, chưa nghiệm thu cho môi trường production. Xem [STATUS.md](STATUS.md).
 
 ## File trong thư mục này
 
@@ -50,9 +50,9 @@ Nếu image SQL Server của bạn đặt tên khác, xem `docker images` và đ
 
 ## Điều kiện merge vào `main`
 
-- Script đã chạy PASS trên Docker test mới, có log/report JSON.
-- `--migrations` PASS hoặc có biên bản xử lý các xung đột migration.
-- SQL có thể tiếp tục được review độc lập; người sở hữu repository duyệt PR trước khi merge.
+- [x] Script đã chạy PASS trên Docker test mới, có log Terminal và report JSON được lưu **trên máy người kiểm thử**; chưa upload report vào PR.
+- [x] `--migrations` PASS trên instance cô lập theo log ngày 02/11/2026.
+- [ ] Hoàn tất review độc lập các file SQL và dữ liệu demo, kèm kiểm thử nghiệp vụ giữ ghế/đặt vé/thanh toán; người sở hữu repository duyệt PR trước khi merge.
 - Không chạy lại script gốc V6.3 trên database đang chứa user, phim, seat hold, booking hoặc payment.
 
 Đây chỉ là **bản ứng viên**, không thay thế backup hay kiểm thử nghiệp vụ thanh toán và giữ ghế.
