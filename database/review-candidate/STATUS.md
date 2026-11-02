@@ -1,21 +1,30 @@
 # SQL V6.3 · Isolated Database Review
 
-**DRAFT / CHƯA ĐƯỢC NGHIỆM THU. Không merge PR và không chạy trên database CineHuntDB đang sử dụng.**
+**TRẠNG THÁI: KIỂM THỬ DATABASE CÔ LẬP PASS, PR VẪN DRAFT. Chưa nghiệm thu nghiệp vụ đặt vé/thanh toán; KHÔNG chạy SQL trên database hiện có.**
 
-Nguồn do chủ repository cung cấp: `CineHunt_Database_V6_3_With_Sample_Data.sql`, 3.419 dòng, SHA-256 `d944ee624af7eb1d228a1fdabe05ac38dc0d8e4b5c37e687f52a971bbd178671`.
+Nguồn SQL gốc do người sở hữu repo cung cấp: `CineHunt_Database_V6_3_With_Sample_Data.sql` (3.419 dòng), SHA-256 `d944ee624af7eb1d228a1fdabe05ac38dc0d8e4b5c37e687f52a971bbd178671`.
 
-Bản SQL đã tách ra `schema.sql` và `sample-data.sql` **hiện nằm trong ZIP kiểm thử đính kèm cuộc trò chuyện**, **chưa được đưa lên branch này**. Không được xem branch/PR là chứa schema hoàn chỉnh đến khi các file được bổ sung và kiểm chứng.
+## Kết quả kiểm thử trên Mac (ngày 02/11/2026)
 
-## Checklist
+Theo log Terminal do người sở hữu repo cung cấp, lệnh `node database/review-candidate/validate-isolated.mjs --execute --migrations` đã hoàn thành trên **container SQL Server 2022 tạm** (không volume, cổng localhost ngẫu nhiên):
 
-- [x] Phát hiện 28 lệnh DROP TABLE trong source và reset database.
-- [x] Tạo bản ứng viên SQL tách cấu trúc/seed, bỏ seed ADMIN cố định, bỏ cấu hình rollback immediate.
-- [x] Kiểm tra tĩnh: 29 bảng, 12 stored procedures, 8 triggers, 3 views.
-- [x] Tạo bộ script thử nghiệm bằng Docker SQL container **mới, không volume, cổng localhost ngẫu nhiên**.
-- [ ] Bổ sung 6 file từ ZIP vào `database/review-candidate/` trên branch này.
-- [ ] Thử trên SQL Server/container mới với `node database/review-candidate/validate-isolated.mjs --execute`.
-- [ ] Thử TypeORM migration bằng `--migrations` trên instance tạm.
-- [ ] Đính kèm report JSON, đối chiếu số bản ghi/constraint.
-- [ ] Chỉ merge sau khi có PASS và review độc lập.
+- [x] Docker startup, localhost TCP và đăng nhập bằng Node `mssql`: PASS
+- [x] Kiểm tra instance mới và database `CineHuntDB` trống: PASS
+- [x] `schema.sql`: **87/87 batches** PASS; 29 bảng, 12 stored procedures, 8 triggers, 3 views
+- [x] `sample-data.sql`: **25/25 batches** PASS, kiểm tra các bảng có dữ liệu và không seed users/bookings/payments/tickets
+- [x] TypeORM migrations trên instance SQL tạm: PASS
+- [x] Đã xóa container thử nghiệm, không tác động database hiện tại
+- [x] Đã push 6 file reviewed vào nhánh review: commit `298e89a`
 
-**Không** dùng `npm run migration:run` độc lập trên backend/.env hiện tại, không chạy SQL gốc trên DB hiện hữu, không push file source có seed admin/password hash.
+Báo cáo JSON được tạo **cục bộ trên máy của người dùng**, chưa đính kèm PR: `~/Desktop/CineHunt_Isolated_SQL_1793608165990.json`.
+
+## Checklist trước khi merge main
+
+- [x] Rà soát tĩnh SQL gốc, loại reset/drop và seed ADMIN/hash cố định
+- [x] Kiểm thử cấu trúc, seed và migrations trên instance riêng
+- [ ] Đưa báo cáo kiểm thử JSON đã rà soát (không chứa mật khẩu/token) vào PR
+- [ ] Kiểm thử tích hợp nghiệp vụ: tạo user → lịch chiếu → giữ ghế → booking → thanh toán trạng thái chờ → hủy/hết hạn → trả ghế; kiểm tra phân quyền
+- [ ] Rà soát độc lập các thông tin demo trong seed (địa chỉ, URL) và xác nhận quyền công khai
+- [ ] Review cuối và xác nhận merge của người sở hữu repo
+
+**Không chạy trực tiếp `npm run migration:run` trên `backend/.env` hiện có. Không chạy SQL gốc có reset/drop trên database có dữ liệu.**
