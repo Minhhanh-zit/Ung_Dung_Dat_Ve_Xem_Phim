@@ -18,12 +18,14 @@ Theo log Terminal do người sở hữu repo cung cấp, lệnh `node database/
 
 Báo cáo JSON được tạo **cục bộ trên máy của người dùng**, chưa đính kèm PR: `~/Desktop/CineHunt_Isolated_SQL_1793608165990.json`.
 
+Bản kiểm thử SQL mới đã tạo báo cáo JSON cục bộ `~/Desktop/CineHunt_Isolated_SQL_1793614106564.json` (chưa đính kèm PR). Tùy chọn `--sql-integration` không chạy HTTP API E2E.
+
 ## Checklist trước khi merge main
 
 - [x] Rà soát tĩnh SQL gốc, loại reset/drop và seed ADMIN/hash cố định
 - [x] Kiểm thử cấu trúc, seed và migrations trên instance riêng
 - [ ] Đưa báo cáo kiểm thử JSON đã rà soát (không chứa mật khẩu/token) vào PR
-- [ ] Chạy thêm `--sql-integration` trên Docker riêng (kiểm tra bảng/cột/index, SQL lifecycle, migration; mới thêm vào validator, chưa có log PASS)
+- [x] Đã chạy `--sql-integration` trên container SQL Server riêng: **PASS** theo log Terminal ngày 02/11/2026. Bộ test SQL Backend đã chạy và tiến trình trả exit code 0; log tóm tắt chưa hiện số test cụ thể.
 - [ ] Kiểm thử tích hợp nghiệp vụ: tạo user → lịch chiếu → giữ ghế → booking → thanh toán trạng thái chờ → hủy/hết hạn → trả ghế; kiểm tra phân quyền
 - [ ] Rà soát độc lập các thông tin demo trong seed (địa chỉ, URL) và xác nhận quyền công khai
 - [ ] Review cuối và xác nhận merge của người sở hữu repo
