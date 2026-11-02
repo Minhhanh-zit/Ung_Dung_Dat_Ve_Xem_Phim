@@ -56,7 +56,9 @@ node database/review-candidate/validate-isolated.mjs --execute --migrations --sq
 
 Tùy chọn `--sql-integration` **bắt buộc** có `--migrations` và `--execute`. Trình kiểm thử tạo một container mới, **không kết nối `backend/.env` hiện tại**, và ép các biến kết nối DB vào đúng cổng localhost ngẫu nhiên. Nó gọi `npm run test:integration:sql` trong `backend/`, để kiểm tra bảng/cột, index, constraint, rollback, lịch sử migration và procedure giải phóng hold. Sau đó xóa container tạm và ghi báo cáo JSON vào Desktop.
 
-**Phân biệt:** đây là SQL integration tests, **chưa phải API E2E** (không gọi HTTP đăng ký/booking/payment). Bài `backend/test/e2e-critical-lifecycle.mjs` có tạo suất, xác nhận thanh toán và hoàn tiền, chỉ được chạy sau khi dựng Backend test riêng cùng dữ liệu/role test; tuyệt đối không chạy nhầm vào Backend/database hiện tại. Chưa được khẳng định `--sql-integration` PASS nếu chưa nhận log Terminal xác minh.
+**Kết quả mới:** Chủ repo đã chạy đầy đủ `--execute --migrations --sql-integration` ngày 02/11/2026, PASS theo log Terminal; số lượng test cụ thể chưa được hiển thị trong log tóm tắt.
+
+**Phân biệt:** đây là SQL integration tests, **chưa phải API E2E** (không gọi HTTP đăng ký/booking/payment). Bài `backend/test/e2e-critical-lifecycle.mjs` có tạo suất, xác nhận thanh toán và hoàn tiền, chỉ được chạy sau khi dựng Backend test riêng cùng dữ liệu/role test; tuyệt đối không chạy nhầm vào Backend/database hiện tại. **Đã nhận log Terminal ngày 02/11/2026 xác minh `--sql-integration` PASS** trên container SQL Server riêng. Báo cáo JSON chi tiết hiện lưu cục bộ trên Mac, chưa đính kèm PR.
  **Không** chạy `npm run migration:run` độc lập, vì lệnh đó có thể trỏ vào SQL Server hiện tại.
 
 Nếu image SQL Server của bạn đặt tên khác, xem `docker images` và đặt `CINEHUNT_REVIEW_SQL_IMAGE` khi chạy (chỉ dùng image tin cậy đã có trên máy).
