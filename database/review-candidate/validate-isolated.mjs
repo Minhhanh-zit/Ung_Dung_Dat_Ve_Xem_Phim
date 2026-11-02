@@ -20,8 +20,10 @@ const root = resolve(here, '../..'); // database/review-candidate -> repo root
 const flags = new Set(process.argv.slice(2));
 const execute = flags.has('--execute');
 const withMigrations = flags.has('--migrations');
+const withSqlIntegration = flags.has('--sql-integration');
 const report = { kind: 'CINEHUNT_ISOLATED_SQL_VERIFICATION', at: new Date().toISOString(),
-  status: 'NOT_RUN', isolated: true, schema: {}, seed: {}, migrations: 'NOT_RUN' };
+  status: 'NOT_RUN', isolated: true, schema: {}, seed: {}, migrations: 'NOT_RUN',
+  sqlIntegration: 'NOT_RUN' };
 
 function docker(args, { extraEnv = {} } = {}) {
   const p = spawnSync('docker', args, { encoding:'utf8', timeout:30_000,
@@ -70,9 +72,12 @@ if (!execute) {
   console.log('  node database/review-candidate/validate-isolated.mjs --execute');
   console.log('De thu TypeORM migrations sau khi tao schema va seed:');
   console.log('  node database/review-candidate/validate-isolated.mjs --execute --migrations');
+  console.log('De chay them SQL integration test tren cung container tam:');
+  console.log('  node database/review-candidate/validate-isolated.mjs --execute --migrations --sql-integration');
   process.exit(0);
 }
-ensure(flags.size === (withMigrations ? 2 : 1), 'Chi cho phep --execute va --migrations');
+ensure([...flags].every(f => ['--execute','--migrations','--sql-integration'].includes(f)), 'Chi cho phep --execute, --migrations, --sql-integration');
+ensure(!withSqlIntegration || withMigrations, '--sql-integration bat buoc di cung --migrations');
 const files = ['schema.sql','sample-data.sql'].map(n=>join(here,n));
 ensure(files.every(existsSync), 'Chua co du hai file SQL can kiem thu trong cung thu muc');
 const manifest = JSON.parse(readFileSync(join(here,'manifest.json'),'utf8'));
@@ -216,6 +221,31 @@ try {
     if (p.status!==0)throw Error(`MIGRATIONS: exit ${p.status}; ${(p.stderr||p.stdout||'').slice(-1300).replaceAll(password,'[REDACTED]')}`);
     report.migrations='PASS';
     console.log('PASS: TypeORM migrations on disposable SQL only.');
+  }
+  if(withSqlIntegration) {
+    // Existing SQL tests validate actual constraints, indexes, transaction rollback
+    // and lifecycle maintenance behavior. Strictly inherit disposable SQL endpoints,
+    // never read the developer's backend/.env database credentials.
+    console.log('SQL integration check: running only against disposable SQL instance.');
+    const integration = spawnSync('npm', ['run','test:integration:sql'], {
+      cwd: join(root,'backend'), encoding:'utf8', timeout:180_000,
+      env:{...process.env,DB_HOST:'127.0.0.1',DB_PORT:String(port),
+        DB_USERNAME:'sa',DB_USER:'sa',DB_PASSWORD:password,
+        DB_DATABASE:'CineHuntDB',DB_NAME:'CineHuntDB',DB_INSTANCE:'',
+        DB_ENCRYPT:'false',DB_TRUST_SERVER_CERTIFICATE:'true',
+        DB_MIGRATIONS_RUN:'false',NODE_ENV:'test'},maxBuffer:3_000_000
+    });
+    if(integration.error || integration.status!==0) {
+      const output = `${integration.stdout||''}\n${integration.stderr||''}`.replaceAll(password,'[REDACTED]');
+      report.sqlIntegration='FAIL';
+      report.sqlIntegrationLogTail=output.slice(-6000);
+      throw Error(`SQL INTEGRATION: exit ${integration.status}; ${output.slice(-2400)}`);
+    }
+    const output = `${integration.stdout||''}\n${integration.stderr||''}`;
+    const matches = [...output.matchAll(/^# (tests|pass|fail) (\d+)\s*$/gm)];
+    const counts = Object.fromEntries(matches.map(m=>[m[1],Number(m[2])]));
+    report.sqlIntegration={status:'PASS',...counts};
+    console.log(`PASS: backend SQL integration tests on disposable SQL only (${counts.pass??'all'} passed).`);
   }
   report.status='PASS';
   console.log('ALL PASS: isolated SQL verified, original CineHuntDB untouched.');
