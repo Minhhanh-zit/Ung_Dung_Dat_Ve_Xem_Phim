@@ -23,6 +23,7 @@ Báo cáo JSON được tạo **cục bộ trên máy của người dùng**, ch
 - [x] Rà soát tĩnh SQL gốc, loại reset/drop và seed ADMIN/hash cố định
 - [x] Kiểm thử cấu trúc, seed và migrations trên instance riêng
 - [ ] Đưa báo cáo kiểm thử JSON đã rà soát (không chứa mật khẩu/token) vào PR
+- [ ] Chạy thêm `--sql-integration` trên Docker riêng (kiểm tra bảng/cột/index, SQL lifecycle, migration; mới thêm vào validator, chưa có log PASS)
 - [ ] Kiểm thử tích hợp nghiệp vụ: tạo user → lịch chiếu → giữ ghế → booking → thanh toán trạng thái chờ → hủy/hết hạn → trả ghế; kiểm tra phân quyền
 - [ ] Rà soát độc lập các thông tin demo trong seed (địa chỉ, URL) và xác nhận quyền công khai
 - [ ] Review cuối và xác nhận merge của người sở hữu repo
