@@ -135,7 +135,11 @@ export default function BookingPayment({
   }, [bookingId, token]);
 
   useEffect(() => {
-    void checkPayment();
+    const timer = setTimeout(() => {
+      void checkPayment();
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [checkPayment]);
 
   async function createPayment() {

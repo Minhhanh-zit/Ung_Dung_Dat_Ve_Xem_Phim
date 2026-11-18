@@ -4,17 +4,9 @@ import { ThemeContext } from "./useTheme";
 
 const THEME_STORAGE_KEY = "theme";
 
-function getSystemPrefersDark(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-  );
-}
-
 function getInitialDarkMode(): boolean {
   const saved = localStorage.getItem(THEME_STORAGE_KEY);
-  return saved ? saved === "dark" : getSystemPrefersDark();
+  return saved === "dark";
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -24,6 +16,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     root.classList.toggle("dark", darkMode);
     root.classList.toggle("light", !darkMode);
+    root.setAttribute("data-theme", darkMode ? "dark" : "light");
     root.style.colorScheme = darkMode ? "dark" : "light";
     localStorage.setItem(THEME_STORAGE_KEY, darkMode ? "dark" : "light");
   }, [darkMode]);

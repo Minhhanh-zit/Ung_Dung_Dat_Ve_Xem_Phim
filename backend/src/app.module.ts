@@ -55,6 +55,14 @@ function validateEnvironment(
     throw new Error(`Thiếu biến môi trường: ${missing.join(', ')}`);
   }
 
+  if (
+    String(config.JWT_SECRET).trim() === String(config.JWT_REFRESH_SECRET).trim()
+  ) {
+    throw new Error(
+      'JWT_SECRET và JWT_REFRESH_SECRET phải là hai giá trị khác nhau.',
+    );
+  }
+
   const isProduction =
     String(config.NODE_ENV ?? '').trim().toLowerCase() === 'production';
   if (isProduction && parseBoolean(String(config.ALLOW_DEMO_PAYMENT ?? ''), false)) {
@@ -105,9 +113,11 @@ function validateEnvironment(
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
           migrations: [__dirname + '/migrations/*{.ts,.js}'],
           migrationsTableName: 'typeorm_migrations',
+          // Mặc định KHÔNG tự chạy migration; chỉ bật khi đặt DB_MIGRATIONS_RUN=true
+          // trên database riêng đã sao lưu.
           migrationsRun: parseBoolean(
             configService.get<string>('DB_MIGRATIONS_RUN'),
-            !isProduction,
+            false,
           ),
           synchronize: false,
           options: {

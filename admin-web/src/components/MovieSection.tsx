@@ -21,7 +21,11 @@ export default function MovieSection({ title, movies }: MovieSectionProps) {
           {movies.slice(0, 8).map((movie) => <MovieCard key={movie.movie_id} movie={movie} />)}
         </div>
       ) : (
-        <div className="stitch-card p-12 text-center stitch-muted">Không có phim phù hợp.</div>
+        <div className="cc-empty">
+          <span className="cc-empty__icon"><span className="material-symbols-outlined">movie</span></span>
+          <h3 className="text-lg font-bold">Chưa có phim ở mục này</h3>
+          <p className="stitch-muted">Bạn thử chuyển sang tab khác hoặc quay lại sau nhé.</p>
+        </div>
       )}
     </section>
   );

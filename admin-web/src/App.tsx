@@ -1,15 +1,16 @@
 import AppRouter from './routes';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
-import ChatBox from './components/ChatBox';
+import ErrorBoundary from './components/ErrorBoundary';
 
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <AppRouter />
-        <ChatBox />
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <AppRouter />
+        </AuthProvider>
+      </ErrorBoundary>
     </ThemeProvider>
   );
 }

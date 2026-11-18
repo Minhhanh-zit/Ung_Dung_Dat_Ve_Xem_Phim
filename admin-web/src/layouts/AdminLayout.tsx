@@ -1,12 +1,11 @@
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/useTheme';
+import ThemeToggle from '../components/ThemeToggle';
 import AdminSidebar from '../components/admin/AdminSidebar';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { darkMode, toggleDarkMode } = useTheme();
 
   return (
     <div className="stitch-admin-shell relative min-h-screen flex overflow-hidden">
@@ -31,9 +30,7 @@ export default function AdminLayout() {
                 <p className="stitch-admin-session">Phiên quản trị đang hoạt động</p>
               </div>
               <span className="stitch-admin-role">{user?.role}</span>
-              <button type="button" onClick={toggleDarkMode} className="stitch-admin-icon-button" aria-label={darkMode ? 'Bật giao diện sáng' : 'Bật giao diện tối'}>
-                <span className="material-symbols-outlined">{darkMode ? 'light_mode' : 'dark_mode'}</span>
-              </button>
+              <ThemeToggle />
               <button type="button" onClick={() => navigate('/')} className="stitch-admin-home-button">
                 <span className="material-symbols-outlined">home</span>
                 <span className="hidden sm:inline">Về trang chủ</span>
