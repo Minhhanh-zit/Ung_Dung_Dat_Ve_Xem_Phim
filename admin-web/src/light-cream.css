@@ -1,0 +1,615 @@
+/*
+ * Giao diện sáng — nền kem, màu chủ đạo tím + xanh dương.
+ * Giữ nguyên phong cách neon / glass / gradient, chỉ đổi bảng màu.
+ * File này thay thế: light-theme, soft-light-theme, light-contrast, light-neon-blue
+ * và các khối html.light trước đây nằm rải rác trong các file CSS khác.
+ */
+
+html.light {
+  color-scheme: light;
+
+  /* Bảng màu gốc */
+  --cream-50: #fffcf5;
+  --cream-100: #fbf5e8;
+  --cream-200: #f5ecd8;
+  --cream-300: #ebddc2;
+  --ink: #2b2236;
+  --ink-soft: #4d4160;
+  --ink-muted: #5f5370;
+  --violet: #6c3fd1;
+  --violet-deep: #5226b5;
+  --blue: #2f6bff;
+  --blue-deep: #1f55d6;
+  --grad-brand: linear-gradient(135deg, #6c3fd1 0%, #4b63f0 52%, #2f6bff 100%);
+  --glow-brand: 0 0 14px rgba(108, 63, 209, 0.34), 0 0 34px rgba(47, 107, 255, 0.2);
+  --warm-line: rgba(96, 66, 30, 0.15);
+  --warm-shadow: 0 16px 44px rgba(96, 66, 30, 0.12);
+
+  /* Token Material (Tailwind: bg-surface, text-primary...) */
+  --color-background: #fbf5e8;
+  --color-on-background: #2b2236;
+  --color-surface: #fbf5e8;
+  --color-surface-dim: #efe3cb;
+  --color-surface-bright: #fffcf5;
+  --color-surface-container-lowest: #fffdf8;
+  --color-surface-container-low: #fdf8ec;
+  --color-surface-container: #f8f0df;
+  --color-surface-container-high: #f2e8d2;
+  --color-surface-container-highest: #ebdfc6;
+  --color-surface-variant: #ebdfc6;
+  --color-on-surface: #2b2236;
+  --color-on-surface-variant: #5a4e6b;
+  --color-outline: #81758f;
+  --color-outline-variant: #e2d5ba;
+  --color-inverse-surface: #342b40;
+  --color-inverse-on-surface: #fbf5e8;
+  --color-surface-tint: #6c3fd1;
+
+  --color-primary: #6c3fd1;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #e7ddfb;
+  --color-on-primary-container: #2a1470;
+  --color-inverse-primary: #cdb8fa;
+
+  --color-secondary: #1f5fe0;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #d8e5ff;
+  --color-on-secondary-container: #0b2a6b;
+
+  --color-tertiary: #a8620a;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #f9ddb5;
+  --color-on-tertiary-container: #4a2800;
+
+  --color-error: #b42318;
+  --color-on-error: #ffffff;
+  --color-error-container: #fbd9d4;
+  --color-on-error-container: #5b1711;
+
+  --color-ultra-dark-navy: #fbf5e8;
+  --color-glass-surface: rgba(255, 252, 244, 0.72);
+
+  /* Token riêng của giao diện (cineglass / stitch) */
+  --cg-page: #fbf5e8;
+  --cg-page-soft: #f5ecd8;
+  --cg-glass: rgba(255, 252, 244, 0.74);
+  --cg-glass-strong: rgba(255, 253, 248, 0.94);
+  --cg-border: rgba(108, 63, 209, 0.14);
+  --cg-border-strong: rgba(108, 63, 209, 0.34);
+  --cg-shadow: 0 20px 56px rgba(96, 66, 30, 0.13);
+  --cg-glow: 0 0 30px rgba(108, 63, 209, 0.12);
+
+  --st-bg: #fbf5e8;
+  --st-bg-soft: #f5ecd8;
+  --st-panel: rgba(255, 252, 244, 0.8);
+  --st-panel-strong: rgba(255, 253, 248, 0.96);
+  --st-panel-light: rgba(108, 63, 209, 0.07);
+  --st-line: rgba(96, 66, 30, 0.15);
+  --st-line-strong: rgba(108, 63, 209, 0.36);
+  --st-text: #2b2236;
+  --st-muted: #5f5370;
+  --st-purple: #6c3fd1;
+  --st-purple-strong: #5226b5;
+  --st-cyan: #1f5fe0;
+  --st-gold: #8a5a00;
+  --st-danger: #b42318;
+  --st-success: #0f7a4f;
+  --st-shadow: 0 22px 60px rgba(96, 66, 30, 0.14);
+}
+
+/* ---------- Nền trang ---------- */
+html.light,
+html.light body {
+  background-color: #fbf5e8;
+}
+
+html.light body {
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 12% 6%, rgba(108, 63, 209, 0.12), transparent 30rem),
+    radial-gradient(circle at 90% 14%, rgba(47, 107, 255, 0.13), transparent 32rem),
+    radial-gradient(circle at 50% 96%, rgba(75, 99, 240, 0.09), transparent 34rem),
+    linear-gradient(180deg, #fffbf1 0%, #fbf5e8 50%, #f6edda 100%);
+}
+
+html.light .stitch-app,
+html.light .stitch-admin-shell {
+  color: var(--ink);
+}
+
+html.light .stitch-app {
+  background:
+    radial-gradient(circle at 8% 16%, rgba(108, 63, 209, 0.12), transparent 30rem),
+    radial-gradient(circle at 92% 56%, rgba(47, 107, 255, 0.12), transparent 34rem),
+    linear-gradient(135deg, #fffbf1 0%, #f8f0de 50%, #fdf8ec 100%);
+}
+
+html.light .stitch-app::before {
+  opacity: 0.07;
+  background-image:
+    linear-gradient(rgba(108, 63, 209, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(47, 107, 255, 0.2) 1px, transparent 1px);
+}
+
+html.light .cineglass-app {
+  background:
+    linear-gradient(rgba(108, 63, 209, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108, 63, 209, 0.02) 1px, transparent 1px);
+  background-size: 52px 52px;
+}
+
+html.light .cineglass-grid {
+  opacity: 0.14;
+  background-image:
+    linear-gradient(rgba(47, 107, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108, 63, 209, 0.07) 1px, transparent 1px);
+}
+
+html.light .cineglass-noise { opacity: 0.02; }
+html.light .cineglass-orb { opacity: 0.1; mix-blend-mode: multiply; }
+
+html.light ::selection { color: var(--ink); background: rgba(108, 63, 209, 0.22); }
+html.light :focus-visible { outline-color: var(--blue); }
+
+html.light ::-webkit-scrollbar-track { background: #f5ecd8; }
+html.light ::-webkit-scrollbar-thumb { background: rgba(108, 63, 209, 0.35); }
+html.light ::-webkit-scrollbar-thumb:hover { background: rgba(47, 107, 255, 0.6); }
+
+/* ---------- Thanh điều hướng ---------- */
+html.light .cineglass-app > header,
+html.light .stitch-nav,
+html.light .stitch-admin-header {
+  background: rgba(255, 252, 244, 0.84) !important;
+  border-color: rgba(108, 63, 209, 0.14) !important;
+  box-shadow:
+    0 10px 32px rgba(96, 66, 30, 0.1),
+    0 0 30px rgba(108, 63, 209, 0.06) !important;
+  backdrop-filter: blur(22px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(140%) !important;
+}
+
+html.light .stitch-brand,
+html.light .stitch-page-title {
+  color: var(--violet) !important;
+  text-shadow:
+    0 0 12px rgba(108, 63, 209, 0.26),
+    0 0 26px rgba(47, 107, 255, 0.16) !important;
+}
+
+html.light .neon-text-primary,
+html.light .nav-glow { text-shadow: 0 0 12px rgba(108, 63, 209, 0.3) !important; }
+html.light .neon-text-secondary,
+html.light .neon-text-glow,
+html.light .text-glow { text-shadow: 0 0 10px rgba(47, 107, 255, 0.28) !important; }
+
+html.light .stitch-nav-link { color: var(--ink-soft) !important; font-weight: 700; }
+html.light .stitch-nav-link:hover,
+html.light .stitch-nav-link.active { color: var(--violet-deep) !important; }
+html.light .stitch-nav-link::after {
+  background: linear-gradient(90deg, #6c3fd1, #2f6bff) !important;
+  box-shadow: 0 0 8px rgba(108, 63, 209, 0.6), 0 0 18px rgba(47, 107, 255, 0.45) !important;
+}
+
+html.light .stitch-location { color: var(--ink-soft); font-weight: 650; }
+html.light .stitch-location-select {
+  color: var(--ink) !important;
+  background: #f5ecd8 !important;
+  border-color: var(--warm-line);
+  color-scheme: light;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+html.light .stitch-location-select:hover,
+html.light .stitch-location-select:focus {
+  background: #fbf3e0 !important;
+  border-color: rgba(108, 63, 209, 0.45);
+  box-shadow: 0 0 0 3px rgba(108, 63, 209, 0.1);
+}
+html.light .stitch-location-select option { color: var(--ink); background: #fffcf5; }
+
+html.light .stitch-account-menu { box-shadow: 0 24px 60px rgba(96, 66, 30, 0.2); }
+
+/* ---------- Chữ ---------- */
+html.light .stitch-muted { color: var(--ink-muted) !important; opacity: 1; }
+html.light .stitch-kicker { color: var(--blue-deep) !important; font-weight: 800; opacity: 1; }
+
+html.light strong,
+html.light b { color: var(--ink); }
+
+html.light label { color: var(--ink-soft); font-weight: 650; }
+
+html.light .stitch-app .text-gray-900,
+html.light .stitch-app .text-gray-800,
+html.light .stitch-app .text-gray-700,
+html.light .stitch-admin-shell .text-gray-900,
+html.light .stitch-admin-shell .text-gray-800,
+html.light .stitch-admin-shell .text-gray-700 { color: var(--ink) !important; }
+
+html.light .stitch-app .text-gray-600,
+html.light .stitch-app .text-gray-500,
+html.light .stitch-app .text-gray-400,
+html.light .stitch-app .text-gray-300,
+html.light .stitch-admin-shell .text-gray-600,
+html.light .stitch-admin-shell .text-gray-500,
+html.light .stitch-admin-shell .text-gray-400,
+html.light .stitch-admin-shell .text-gray-300 { color: var(--ink-muted) !important; opacity: 1; }
+
+html.light [class*="text-green-"] { color: #0f7a4f !important; }
+html.light [class*="text-red-"] { color: #b42318 !important; }
+html.light [class*="text-purple-"],
+html.light [class*="text-violet-"] { color: var(--violet) !important; }
+html.light [class*="text-blue-"],
+html.light [class*="text-cyan-"] { color: var(--blue-deep) !important; }
+html.light [class*="text-yellow-"],
+html.light [class*="text-amber-"] { color: #8a5a00 !important; }
+
+html.light [class*="bg-green-"][class*="/10"],
+html.light [class*="bg-green-"][class*="/20"] {
+  background-color: rgba(15, 122, 79, 0.12) !important;
+  border-color: rgba(15, 122, 79, 0.34) !important;
+}
+html.light [class*="bg-red-"][class*="/10"],
+html.light [class*="bg-red-"][class*="/20"] {
+  background-color: rgba(180, 35, 24, 0.1) !important;
+  border-color: rgba(180, 35, 24, 0.32) !important;
+}
+html.light [class*="bg-purple-"][class*="/10"],
+html.light [class*="bg-purple-"][class*="/20"],
+html.light [class*="bg-violet-"][class*="/10"],
+html.light [class*="bg-violet-"][class*="/20"] {
+  background-color: rgba(108, 63, 209, 0.11) !important;
+  border-color: rgba(108, 63, 209, 0.34) !important;
+}
+
+/* ---------- Thẻ, kính mờ, bảng ---------- */
+html.light .stitch-glass,
+html.light .stitch-card,
+html.light .glass-panel,
+html.light .glass-card,
+html.light .glass-modal,
+html.light .cyber-card,
+html.light .ticket-glass,
+html.light [role="dialog"],
+html.light table {
+  color: var(--ink);
+  background:
+    linear-gradient(145deg, rgba(255, 253, 248, 0.96), rgba(250, 243, 228, 0.88)),
+    rgba(255, 252, 244, 0.86) !important;
+  border-color: var(--warm-line) !important;
+  box-shadow:
+    0 16px 44px rgba(96, 66, 30, 0.11),
+    0 0 22px rgba(108, 63, 209, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+html.light .stitch-card::after {
+  background: linear-gradient(125deg, rgba(255, 255, 255, 0.5), transparent 30%, transparent 72%, rgba(47, 107, 255, 0.04));
+}
+
+html.light .stitch-card-hover:hover,
+html.light .glass-card:hover,
+html.light .cyber-card:hover,
+html.light .movie-card:hover {
+  border-color: rgba(108, 63, 209, 0.45) !important;
+  box-shadow:
+    0 22px 54px rgba(96, 66, 30, 0.16),
+    0 0 18px rgba(108, 63, 209, 0.22),
+    0 0 38px rgba(47, 107, 255, 0.12) !important;
+}
+
+html.light .stitch-app .bg-white,
+html.light .stitch-app .bg-gray-50,
+html.light .stitch-app .bg-gray-100,
+html.light .stitch-admin-shell .bg-white,
+html.light .stitch-admin-shell .bg-gray-50,
+html.light .stitch-admin-shell .bg-gray-100 {
+  background-color: rgba(255, 252, 244, 0.9) !important;
+  border-color: var(--warm-line) !important;
+}
+
+html.light .stitch-app .border-gray-100,
+html.light .stitch-app .border-gray-200,
+html.light .stitch-app .border-gray-300,
+html.light .stitch-admin-shell .border-gray-100,
+html.light .stitch-admin-shell .border-gray-200,
+html.light .stitch-admin-shell .border-gray-300 { border-color: var(--warm-line) !important; }
+
+html.light .stitch-admin-shell .shadow,
+html.light .stitch-admin-shell .shadow-md,
+html.light .stitch-admin-shell .shadow-lg { box-shadow: 0 14px 35px rgba(96, 66, 30, 0.12) !important; }
+
+html.light .stitch-admin-sidebar { box-shadow: 12px 0 35px rgba(96, 66, 30, 0.07); }
+
+html.light table { color: #3d3350; }
+html.light thead { background: rgba(108, 63, 209, 0.08) !important; }
+html.light thead th,
+html.light .stitch-admin-shell thead th { color: var(--ink-soft) !important; font-weight: 800 !important; opacity: 1 !important; }
+html.light tbody td,
+html.light .stitch-admin-shell tbody td { color: #4d4160; font-weight: 520; }
+html.light tbody td strong,
+html.light .stitch-admin-shell tbody td strong { color: var(--ink); font-weight: 750; }
+html.light tbody tr:hover,
+html.light .table-row-hover:hover { background: rgba(47, 107, 255, 0.06) !important; }
+html.light .stitch-admin-shell td a { color: var(--blue-deep) !important; font-weight: 650; }
+
+html.light .stitch-admin-link { color: var(--ink-soft); font-weight: 700; }
+html.light .stitch-admin-link .material-symbols-outlined { color: var(--ink-muted); }
+html.light .stitch-admin-link:hover { color: var(--ink); }
+html.light .stitch-admin-link.active { color: #2a1470; font-weight: 800; }
+html.light .stitch-admin-link.active .material-symbols-outlined { color: var(--violet-deep); }
+html.light .stitch-admin-sidebar-note,
+html.light .stitch-admin-header > div:first-child > p:last-child,
+html.light .stitch-admin-session { color: var(--ink-muted); opacity: 1; }
+
+html.light .sidenav-active {
+  color: var(--violet);
+  background: rgba(108, 63, 209, 0.1);
+  border-left-color: var(--violet);
+}
+
+/* ---------- Ô nhập ---------- */
+html.light .stitch-input,
+html.light .stitch-select,
+html.light .stitch-textarea,
+html.light .input-glass,
+html.light .input-cyber,
+html.light input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html.light textarea,
+html.light select {
+  color: var(--ink) !important;
+  font-weight: 550;
+  background-color: rgba(255, 253, 248, 0.95) !important;
+  border-color: rgba(96, 66, 30, 0.22) !important;
+  box-shadow: inset 0 1px 2px rgba(96, 66, 30, 0.05);
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder { color: #85789a !important; opacity: 1 !important; }
+
+html.light .stitch-input:focus,
+html.light .stitch-select:focus,
+html.light .stitch-textarea:focus,
+html.light .input-glass:focus,
+html.light .input-cyber:focus,
+html.light input:focus,
+html.light textarea:focus,
+html.light select:focus {
+  border-color: #5b6cf0 !important;
+  box-shadow:
+    0 0 0 3px rgba(108, 63, 209, 0.14),
+    0 0 18px rgba(47, 107, 255, 0.22),
+    0 7px 22px rgba(96, 66, 30, 0.08) !important;
+}
+
+/* ---------- Nút ---------- */
+html.light .btn-primary,
+html.light .btn-primary-glow,
+html.light .stitch-btn-primary {
+  color: #ffffff !important;
+  background: var(--grad-brand) !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
+  box-shadow:
+    0 8px 22px rgba(76, 63, 230, 0.28),
+    0 0 14px rgba(108, 63, 209, 0.38),
+    0 0 34px rgba(47, 107, 255, 0.2) !important;
+}
+
+html.light .btn-primary:hover,
+html.light .btn-primary-glow:hover,
+html.light .stitch-btn-primary:hover {
+  filter: brightness(1.07) saturate(1.08) !important;
+  box-shadow:
+    0 11px 28px rgba(76, 63, 230, 0.34),
+    0 0 18px rgba(108, 63, 209, 0.5),
+    0 0 42px rgba(47, 107, 255, 0.3) !important;
+}
+
+html.light .btn-secondary,
+html.light .secondary-btn,
+html.light .stitch-btn-outline {
+  color: #2f55d8 !important;
+  background: rgba(255, 253, 248, 0.8) !important;
+  border-color: rgba(76, 99, 240, 0.55) !important;
+  box-shadow: 0 0 14px rgba(47, 107, 255, 0.12) !important;
+}
+
+html.light .btn-secondary:hover,
+html.light .secondary-btn:hover,
+html.light .stitch-btn-outline:hover {
+  background: rgba(220, 232, 255, 0.75) !important;
+  border-color: #4b63f0 !important;
+  box-shadow: 0 0 14px rgba(47, 107, 255, 0.3), 0 0 30px rgba(108, 63, 209, 0.14) !important;
+}
+
+html.light .neon-glow,
+html.light .neon-glow-primary,
+html.light .neon-glow-secondary,
+html.light .neon-border { box-shadow: 0 8px 24px rgba(96, 66, 30, 0.12), 0 0 18px rgba(108, 63, 209, 0.16) !important; }
+
+html.light .stitch-admin-shell button[class*="bg-blue-"][class*="text-white"],
+html.light .stitch-admin-shell a[class*="bg-blue-"][class*="text-white"],
+html.light .stitch-admin-shell button[class*="bg-indigo-"][class*="text-white"],
+html.light .stitch-admin-shell a[class*="bg-indigo-"][class*="text-white"] {
+  color: #fff !important;
+  font-weight: 750;
+}
+html.light .stitch-admin-shell button:disabled { opacity: 0.52 !important; }
+html.light .stitch-btn,
+html.light .stitch-admin-home-button,
+html.light .stitch-admin-icon-button { font-weight: 750; }
+html.light .cgv-time-grid button:hover { color: #fff; background: var(--grad-brand); border-color: transparent; }
+
+/* ---------- Nhãn, trạng thái ---------- */
+html.light .stitch-badge-purple { color: #fff !important; background: var(--violet) !important; box-shadow: 0 0 14px rgba(108, 63, 209, 0.25); }
+html.light .stitch-badge-cyan { color: #fff !important; background: var(--blue) !important; }
+html.light .stitch-badge-gold { color: #3a2a00 !important; background: #f2c94c !important; }
+
+html.light .status-badge-active,
+html.light .status-active,
+html.light .status-valid { color: #1f55d6; background: rgba(216, 229, 255, 0.7); border-color: rgba(47, 107, 255, 0.35); }
+html.light .status-badge-inactive,
+html.light .status-ended { color: var(--ink-muted); background: rgba(129, 117, 143, 0.12); border-color: rgba(129, 117, 143, 0.28); }
+html.light .status-locked { color: #9f2118; background: rgba(251, 217, 212, 0.8); border-color: rgba(180, 35, 24, 0.28); }
+
+/* ---------- Banner trang chủ ---------- */
+html.light .stitch-hero {
+  background:
+    radial-gradient(circle at 78% 54%, rgba(47, 107, 255, 0.22), transparent 28rem),
+    radial-gradient(circle at 54% 22%, rgba(108, 63, 209, 0.14), transparent 24rem),
+    #fbf5e8;
+}
+
+html.light .stitch-hero-bg {
+  opacity: 0.5 !important;
+  filter: saturate(1.1) contrast(1.02) brightness(1.04) !important;
+}
+
+html.light .stitch-hero-shade {
+  background:
+    radial-gradient(circle at 77% 54%, rgba(47, 107, 255, 0.18), transparent 27rem),
+    linear-gradient(90deg,
+      rgba(255, 251, 241, 0.97) 0%,
+      rgba(252, 246, 232, 0.88) 34%,
+      rgba(246, 238, 222, 0.5) 57%,
+      rgba(240, 232, 255, 0.2) 76%,
+      rgba(251, 245, 232, 0.38) 100%),
+    linear-gradient(0deg, rgba(251, 245, 232, 0.92) 0%, transparent 40%) !important;
+}
+
+html.light .stitch-hero .stitch-hero-title { color: #1f1730 !important; text-shadow: none !important; }
+html.light .stitch-hero .stitch-kicker {
+  color: var(--violet-deep) !important;
+  background: rgba(255, 253, 248, 0.75) !important;
+  border-color: rgba(108, 63, 209, 0.4) !important;
+  box-shadow: 0 0 14px rgba(108, 63, 209, 0.16), inset 0 0 14px rgba(108, 63, 209, 0.05) !important;
+}
+html.light .stitch-hero .stitch-muted,
+html.light .stitch-hero p { color: #3d3350 !important; text-shadow: none !important; }
+html.light .stitch-hero [style*="var(--st-cyan)"] { color: var(--blue-deep) !important; font-weight: 700; }
+
+html.light .stitch-poster-card {
+  border-color: rgba(108, 63, 209, 0.22) !important;
+  background: #fffdf8 !important;
+  box-shadow: 0 18px 38px rgba(96, 66, 30, 0.2) !important;
+}
+html.light .stitch-poster-card.active,
+html.light .carousel-card.active {
+  border: 2px solid #5b6cf0 !important;
+  box-shadow:
+    0 24px 46px rgba(96, 66, 30, 0.24),
+    0 0 10px rgba(108, 63, 209, 0.8),
+    0 0 28px rgba(47, 107, 255, 0.5),
+    0 0 62px rgba(108, 63, 209, 0.26) !important;
+}
+html.light .stitch-poster-card:hover {
+  border-color: #4b63f0 !important;
+  box-shadow: 0 20px 45px rgba(96, 66, 30, 0.22), 0 0 26px rgba(47, 107, 255, 0.34) !important;
+}
+html.light .carousel-card.inactive { border-color: rgba(96, 66, 30, 0.18); box-shadow: 0 12px 26px rgba(96, 66, 30, 0.16); }
+
+html.light .stitch-hero-controls .stitch-icon-btn {
+  color: var(--violet) !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+  border-color: rgba(108, 63, 209, 0.42) !important;
+  box-shadow: 0 8px 20px rgba(96, 66, 30, 0.13), 0 0 20px rgba(108, 63, 209, 0.2) !important;
+}
+html.light .stitch-hero-controls .stitch-icon-btn:hover {
+  color: #fff !important;
+  background: var(--grad-brand) !important;
+  border-color: #7d8bff !important;
+  box-shadow: 0 0 14px rgba(108, 63, 209, 0.7), 0 0 34px rgba(47, 107, 255, 0.42) !important;
+}
+
+/* Banner chi tiết phim: nền ảnh tối nên chữ vẫn trắng */
+html.light .stitch-detail-hero h1,
+html.light .stitch-detail-hero h2,
+html.light .stitch-detail-hero h3 { color: #fff !important; text-shadow: 0 3px 18px rgba(0, 0, 0, 0.62) !important; }
+html.light .stitch-detail-hero .stitch-muted { color: #e3dff0 !important; opacity: 1 !important; }
+html.light .stitch-detail-hero .stitch-kicker { color: #9fb8ff !important; }
+html.light .stitch-detail-hero .stitch-btn-outline {
+  color: #c9d6ff !important;
+  background: rgba(20, 14, 40, 0.7) !important;
+  border-color: rgba(159, 184, 255, 0.7) !important;
+  font-weight: 800;
+}
+html.light .stitch-detail-hero .stitch-btn-outline:hover { color: #140e28 !important; background: #b8c8ff !important; }
+
+/* ---------- Vé, cửa sổ đặt vé ---------- */
+html.light .booking-ticket-overlay { background: rgba(43, 34, 54, 0.55); }
+html.light .booking-ticket-modal {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.7), transparent 34%), #fffaef;
+  border-color: rgba(108, 63, 209, 0.22);
+  box-shadow: 0 28px 70px rgba(96, 66, 30, 0.24), 0 0 26px rgba(108, 63, 209, 0.12);
+}
+html.light .booking-ticket-single { background: #fffcf5; border-color: var(--warm-line); }
+html.light .booking-ticket-qr { box-shadow: 0 12px 28px rgba(96, 66, 30, 0.18); }
+
+html.light .seat-map-wrapper {
+  background: linear-gradient(145deg, rgba(255, 253, 248, 0.95), rgba(248, 239, 220, 0.8));
+  border-color: var(--warm-line);
+  box-shadow: 0 24px 65px rgba(96, 66, 30, 0.14);
+}
+html.light .seat-map-header { border-bottom-color: var(--warm-line); }
+
+/* ---------- Chatbot ---------- */
+html.light .chatbot-fab,
+html.light button[aria-label*="chat" i],
+html.light button[title*="chat" i],
+html.light button.fixed.bottom-4.right-4,
+html.light button.fixed.bottom-5.right-5,
+html.light button.fixed.bottom-6.right-6,
+html.light button.fixed.bottom-8.right-8 {
+  opacity: 1 !important;
+  color: #fff !important;
+  background: var(--grad-brand) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 12px 30px rgba(76, 63, 230, 0.3), 0 0 0 5px rgba(108, 63, 209, 0.1), 0 0 26px rgba(47, 107, 255, 0.35) !important;
+}
+html.light .chatbot-fab:hover,
+html.light button[aria-label*="chat" i]:hover,
+html.light button[title*="chat" i]:hover,
+html.light button.fixed.bottom-4.right-4:hover,
+html.light button.fixed.bottom-5.right-5:hover,
+html.light button.fixed.bottom-6.right-6:hover,
+html.light button.fixed.bottom-8.right-8:hover { transform: translateY(-2px) scale(1.03); }
+html.light .chatbot-fab .material-symbols-outlined,
+html.light .chatbot-fab svg,
+html.light button[aria-label*="chat" i] .material-symbols-outlined,
+html.light button[aria-label*="chat" i] svg,
+html.light button[title*="chat" i] .material-symbols-outlined,
+html.light button[title*="chat" i] svg { color: #fff !important; stroke: currentColor; opacity: 1 !important; }
+html.light .chatbot-panel {
+  color: var(--ink) !important;
+  background: #fffaef !important;
+  border: 1px solid rgba(108, 63, 209, 0.2) !important;
+  box-shadow: 0 24px 60px rgba(96, 66, 30, 0.22) !important;
+}
+
+/* ---------- Đăng nhập / Đăng ký ---------- */
+html.light .stitch-auth-visual { background: #fff9ec; border-color: rgba(108, 63, 209, 0.24); box-shadow: 0 18px 48px rgba(96, 66, 30, 0.13); }
+html.light .stitch-auth-background { opacity: 0.5; filter: brightness(1.12) saturate(0.95) contrast(0.95); }
+html.light .stitch-auth-visual::before {
+  background:
+    radial-gradient(circle at 27% 22%, rgba(108, 63, 209, 0.16), transparent 36%),
+    linear-gradient(180deg, rgba(255, 252, 244, 0.1) 0%, rgba(255, 250, 238, 0.26) 48%, rgba(251, 245, 232, 0.84) 100%);
+}
+html.light .stitch-auth-visual::after { background: linear-gradient(90deg, rgba(255, 253, 248, 0.22), transparent 70%); }
+html.light .stitch-auth-team { border-color: rgba(108, 63, 209, 0.4); background: rgba(255, 253, 248, 0.7); box-shadow: 0 18px 46px rgba(96, 66, 30, 0.12); }
+html.light .stitch-auth-member { color: var(--ink); border-color: var(--warm-line); background: rgba(255, 253, 248, 0.7); }
+html.light .stitch-auth-team-heading,
+html.light .stitch-auth-student-id { color: var(--blue-deep); }
+html.light .stitch-auth-copy-fixed h1 { color: #1f1730; text-shadow: none; }
+html.light .stitch-auth-copy-fixed > p:last-child { color: var(--ink-muted); }
+
+/* ---------- Màn hình nhỏ ---------- */
+@media (max-width: 767px) {
+  html.light body,
+  html.light .stitch-app {
+    background:
+      radial-gradient(circle at 50% 8%, rgba(108, 63, 209, 0.14), transparent 22rem),
+      linear-gradient(180deg, #fffbf1 0%, #f6edda 100%);
+  }
+
+  html.light .stitch-hero-shade {
+    background: linear-gradient(180deg, rgba(255, 251, 241, 0.94) 0%, rgba(250, 243, 228, 0.88) 58%, rgba(251, 245, 232, 0.96) 100%) !important;
+  }
+}

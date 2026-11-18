@@ -1,0 +1,208 @@
+/*
+ * Giao diện "gần gũi" kiểu Beta / CGV: thẻ phim có poster + thông tin bên dưới,
+ * bo góc mềm, bóng nhẹ, nút bật/tắt sáng–tối, lời chào, trạng thái trống.
+ * Dùng chung cho cả giao diện sáng và tối (qua biến --st-*).
+ */
+
+/* ---------- Thẻ phim ---------- */
+.cc-card { display: flex; flex-direction: column; gap: 14px; }
+
+.cc-poster {
+  position: relative;
+  display: block;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--st-bg-soft);
+  border: 1px solid var(--st-line);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.cc-poster img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+.cc-card:hover .cc-poster { transform: translateY(-6px); border-color: var(--st-line-strong); }
+.cc-card:hover .cc-poster img { transform: scale(1.05); }
+
+.cc-hover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 18px;
+  opacity: 0;
+  background: linear-gradient(0deg, rgba(20, 12, 40, 0.78), transparent 55%);
+  transition: opacity 0.25s ease;
+}
+.cc-card:hover .cc-hover,
+.cc-poster:focus-visible .cc-hover { opacity: 1; }
+.cc-hover span {
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(8px);
+}
+
+.cc-age {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 3;
+  min-width: 34px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fff;
+  background: #6b7280;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.cc-age--P { background: #1f9d63; }
+.cc-age--K { background: #2f6bff; }
+.cc-age--T13 { background: #d99a0b; }
+.cc-age--T16 { background: #e8710a; }
+.cc-age--T18 { background: #d6342a; }
+
+.cc-tools { position: absolute; z-index: 4; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; }
+.cc-tools > * { pointer-events: auto; }
+
+.cc-soon {
+  position: absolute;
+  z-index: 3;
+  right: 12px;
+  bottom: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #6c3fd1, #2f6bff);
+}
+
+.cc-info { display: flex; flex-direction: column; gap: 6px; padding: 0 4px; }
+.cc-title {
+  font-size: 1.02rem;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--st-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.6em;
+}
+.cc-title:hover { color: var(--st-purple); }
+.cc-meta { font-size: 0.82rem; color: var(--st-muted); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.cc-meta span { display: inline-flex; align-items: center; gap: 4px; }
+.cc-meta .material-symbols-outlined { font-size: 16px; }
+.cc-buy { margin-top: 6px; width: 100%; justify-content: center; border-radius: 12px; padding-block: 10px; }
+
+/* ---------- Giờ chiếu kiểu CGV: bo tròn, dễ bấm ---------- */
+.cgv-time-grid button,
+.stitch-time-button { border-radius: 12px; }
+
+/* ---------- Nút bật/tắt sáng–tối ---------- */
+.theme-toggle {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--st-line-strong);
+  background: var(--st-panel-light);
+  cursor: pointer;
+  transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.theme-toggle:hover { box-shadow: 0 0 16px color-mix(in srgb, var(--st-purple) 40%, transparent); }
+.theme-toggle__icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 17px !important;
+  color: var(--st-muted);
+  pointer-events: none;
+}
+.theme-toggle__icon--sun { left: 9px; }
+.theme-toggle__icon--moon { right: 9px; }
+.theme-toggle__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6c3fd1, #2f6bff);
+  box-shadow: 0 0 12px rgba(108, 63, 209, 0.55);
+  transition: transform 0.3s cubic-bezier(0.4, 0.1, 0.2, 1);
+}
+.theme-toggle[aria-checked="true"] .theme-toggle__thumb { transform: translateX(30px); }
+.theme-toggle[aria-checked="false"] .theme-toggle__icon--sun,
+.theme-toggle[aria-checked="true"] .theme-toggle__icon--moon { color: #fff; z-index: 1; }
+
+/* ---------- Lời chào & tiêu đề mục ---------- */
+.cc-greeting {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 40px;
+  padding: 16px 20px;
+  border-radius: 20px;
+  border: 1px solid var(--st-line);
+  background: var(--st-panel);
+}
+.cc-greeting__avatar {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #6c3fd1, #2f6bff);
+  box-shadow: 0 0 18px rgba(108, 63, 209, 0.4);
+  overflow: hidden;
+}
+.cc-greeting__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.cc-greeting h2 { font-size: 1.15rem; font-weight: 800; line-height: 1.3; }
+.cc-greeting p { font-size: 0.88rem; color: var(--st-muted); }
+
+/* ---------- Trạng thái trống ---------- */
+.cc-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 48px 24px;
+  text-align: center;
+  border-radius: 22px;
+  border: 1px dashed var(--st-line-strong);
+  background: var(--st-panel-light);
+}
+.cc-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, #6c3fd1, #2f6bff);
+  box-shadow: 0 0 26px rgba(108, 63, 209, 0.35);
+}
+.cc-empty__icon .material-symbols-outlined { font-size: 36px; }
+
+/* ---------- Bo góc & bóng mềm cho thẻ, nút ---------- */
+.stitch-card { border-radius: 20px; }
+.stitch-btn { border-radius: 12px; }
+.stitch-input, .stitch-select, .stitch-textarea { border-radius: 12px; }
+
+@media (max-width: 640px) {
+  .cc-title { font-size: 0.92rem; }
+  .cc-meta { font-size: 0.75rem; }
+  .cc-greeting { padding: 12px 14px; margin-bottom: 28px; }
+}
