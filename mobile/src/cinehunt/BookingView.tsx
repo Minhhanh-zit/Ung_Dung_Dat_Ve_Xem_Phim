@@ -1,9 +1,9 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Alert,Text,View} from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import {api,ApiError,errorMessage,formatDate,formatMoney} from './api';
+import {api,ApiError,errorMessage,formatDate,formatMoney} from '../services/apiClient';
 import {Button,C,GlowPanel,Kicker,Loader,Notice,S,SectionHeading,SimpleScroll,StatusPill} from './ui';
-import type {Booking,Payment,PaymentMethod,Ticket} from './types';
+import type {Booking,Payment,PaymentMethod,Ticket} from '../types';
 
 type Props={bookingId:string;token:string|null;ticketsOnly?:boolean;onAuth:()=>void;onCancelled:()=>void;onTickets:()=>void};
 export default function BookingView({bookingId,token,ticketsOnly=false,onAuth,onCancelled,onTickets}:Props){
@@ -34,7 +34,11 @@ export default function BookingView({bookingId,token,ticketsOnly=false,onAuth,on
       setVerified(true);
     }catch(e){setError(errorMessage(e))}finally{setLoading(false)}
   },[bookingId,token]);
-  useEffect(()=>{void load()},[load]);
+  useEffect(()=>{
+    let active=true;
+    void Promise.resolve().then(()=>{if(active)return load()});
+    return ()=>{active=false};
+  },[load]);
   async function createPayment(){
     if(!token||!verified||!booking||payment||inFlight.current||booking.status!=='PENDING_PAYMENT')return;
     if(!methods.some(m=>m.code===selected)){setError('Phương thức chưa được bật');return;}
@@ -68,7 +72,7 @@ export default function BookingView({bookingId,token,ticketsOnly=false,onAuth,on
     {tickets.map(t=><View key={String(t.ticketId)} style={[S.card,{padding:0,overflow:'hidden'}]}>
       <GlowPanel from="#4A317D" to="#152E48" style={{borderWidth:0,borderRadius:0}}>
         <Kicker color={C.lavender}>CINEHUNT ADMIT ONE</Kicker>
-        <Text style={{color:C.white,fontWeight:'900',fontSize:23,marginTop:10,lineHeight:30}}>{t.movieTitle||'Vé CineHunt'}</Text>
+        <Text style={{color:C.hero,fontWeight:'900',fontSize:23,marginTop:10,lineHeight:30}}>{t.movieTitle||'Vé CineHunt'}</Text>
         <Text style={{color:'#DDE0F2',fontSize:12,marginTop:10}}>{t.showDate||''} {t.showTime||''}  ·  Ghế {t.seatCode||'—'}</Text>
       </GlowPanel>
       <View style={{alignItems:'center',padding:22}}>
@@ -84,12 +88,12 @@ export default function BookingView({bookingId,token,ticketsOnly=false,onAuth,on
     <View style={{marginTop:7,marginBottom:17}}><Kicker>YOUR BOOKING</Kicker><Text style={[S.title,{marginTop:8}]}>Chi tiết đơn vé</Text><Text style={[S.muted,{marginTop:7}]}>Theo dõi trạng thái, thanh toán và vé điện tử.</Text></View>
     {loading&&<Loader/>}{!!error&&<Notice text={error} bad/>}{!!warning&&<Notice text={warning} bad/>}
     {booking&&<GlowPanel from="#442C69" to="#123047" style={{marginBottom:17}}>
-      <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}><Kicker color={C.cyan}>CINEHUNT BOOKING</Kicker><Text style={{color:'#E2D4FB',fontWeight:'900',fontSize:16}}>✦</Text></View>
-      <Text style={{color:C.white,fontSize:23,fontWeight:'900',marginTop:14,lineHeight:28}}>{booking.showtime?.movie?.title||`Suất chiếu #${booking.showtimeId}`}</Text>
+      <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}><Kicker color={C.heroCyan}>CINEHUNT BOOKING</Kicker><Text style={{color:'#E2D4FB',fontWeight:'900',fontSize:16}}>✦</Text></View>
+      <Text style={{color:C.hero,fontSize:23,fontWeight:'900',marginTop:14,lineHeight:28}}>{booking.showtime?.movie?.title||`Suất chiếu #${booking.showtimeId}`}</Text>
       <Text style={{color:'#C7CEE3',fontSize:11,marginTop:11}} numberOfLines={2}>Mã đơn: {booking.bookingCode}</Text>
       <View style={{marginTop:15}}><StatusPill status={booking.status}/></View>
       <View style={{height:1,backgroundColor:'#FFFFFF2B',marginVertical:16}}/>
-      <View style={{flexDirection:'row',justifyContent:'space-between'}}><View><Text style={{color:'#C8CDE0',fontSize:11}}>SỐ GHẾ</Text><Text style={{color:C.white,fontWeight:'900',fontSize:17,marginTop:6}}>{booking.seatCount??booking.bookingDetails?.length??'—'}</Text></View><View style={{alignItems:'flex-end'}}><Text style={{color:'#C8CDE0',fontSize:11}}>TỔNG TIỀN</Text><Text style={{color:C.green,fontWeight:'900',fontSize:24,marginTop:4}}>{formatMoney(booking.totalAmount)}</Text></View></View>
+      <View style={{flexDirection:'row',justifyContent:'space-between'}}><View><Text style={{color:'#C8CDE0',fontSize:11}}>SỐ GHẾ</Text><Text style={{color:C.hero,fontWeight:'900',fontSize:17,marginTop:6}}>{booking.seatCount??booking.bookingDetails?.length??'—'}</Text></View><View style={{alignItems:'flex-end'}}><Text style={{color:'#C8CDE0',fontSize:11}}>TỔNG TIỀN</Text><Text style={{color:C.heroGreen,fontWeight:'900',fontSize:24,marginTop:4}}>{formatMoney(booking.totalAmount)}</Text></View></View>
       {!!booking.expiresAt&&<Text style={{color:'#C8CDE0',fontSize:11,marginTop:17}}>Hạn ghi trong đơn: {formatDate(booking.expiresAt)}</Text>}
       {payment?.paymentMethod==='CASH'&&<Text style={{color:'#C8CDE0',fontSize:11,marginTop:9}}>Thanh toán tiền mặt tại quầy có chính sách gia hạn riêng.</Text>}
       {booking.status==='PENDING_PAYMENT'&&<Notice text="Đơn chưa thanh toán thành công nên chưa có vé QR."/>}

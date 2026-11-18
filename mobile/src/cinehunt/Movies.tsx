@@ -1,37 +1,90 @@
-import {useCallback,useEffect,useMemo,useState} from 'react';
-import {Pressable,ScrollView,Text,TextInput,View,useWindowDimensions} from 'react-native';
-import {api,errorMessage,formatDate,formatMoney} from './api';
+import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
+import {Pressable,Text,TextInput,View,useWindowDimensions} from 'react-native';
+import {api,errorMessage,formatDate,formatMoney} from '../services/apiClient';
 import {Button,C,FilmArt,GlowPanel,Kicker,Loader,Notice,S,SectionHeading,SimpleScroll} from './ui';
-import type {Movie,Showtime} from './types';
+import type {Movie,Showtime} from '../types';
 
 type Props={mode:'list'|'detail';selectedMovie?:Movie;token?:string|null;favorites:number[];onToggleFav:(id:number)=>void;onOpen:(m:Movie)=>void;onSeats?:(s:Showtime)=>void;onAuth?:()=>void};
 export default function Movies({mode,selectedMovie,token,favorites,onToggleFav,onOpen,onSeats,onAuth}:Props){
   const {width}=useWindowDimensions();
-  const posterSize=Math.max(88,Math.min(143,Math.floor((width-40)*.484)-20));
+  const posterSize=Math.max(84,Math.min(126,Math.floor((width-44)/3)-13));
   const [movies,setMovies]=useState<Movie[]>([]);
   const [detail,setDetail]=useState<Movie|null>(null);
   const [shows,setShows]=useState<Showtime[]>([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
   const [search,setSearch]=useState('');
-  const [filter,setFilter]=useState('ALL');
+  // CINEHUNT_BETA_MOVIE_V1: tabs backed by real movie/showtime records.
+  const [filter,setFilter]=useState<'COMING_SOON'|'NOW_SHOWING'|'EARLY'>('NOW_SHOWING');
+  const [earlyIds,setEarlyIds]=useState<number[]>([]);
+  const [earlyChecking,setEarlyChecking]=useState(false);
+  const [earlyChecked,setEarlyChecked]=useState(false);
+  const earlyRequest=useRef(0);
   const [rating,setRating]=useState(0);
   const [ratingMessage,setRatingMessage]=useState('');
+  const [now,setNow]=useState<number|null>(null);
+  useEffect(()=>{
+    const initial=setTimeout(()=>setNow(Date.now()),0);
+    const interval=setInterval(()=>setNow(Date.now()),60000);
+    return ()=>{clearTimeout(initial);clearInterval(interval)};
+  },[]);
   const loadList=useCallback(async()=>{setLoading(true);setError('');try{
     const r=await api<{items:Movie[];total:number}>('/movies?page=1&limit=50');
-    if(!Array.isArray(r.items))throw new Error('Danh sách phim không hợp lệ');setMovies(r.items);
+    if(!Array.isArray(r.items))throw new Error('Danh sách phim không hợp lệ');earlyRequest.current+=1;setEarlyChecked(false);setEarlyChecking(false);setEarlyIds([]);setMovies(r.items);
   }catch(e){setError(errorMessage(e))}finally{setLoading(false)}},[]);
-  useEffect(()=>{if(mode==='list')void loadList()},[mode,loadList]);
   useEffect(()=>{
-    if(mode!=='detail'||!selectedMovie)return;
-    let active=true;setDetail(null);setShows([]);setLoading(true);setError('');setRatingMessage('');setRating(0);
-    void Promise.all([api<Movie>(`/movies/${selectedMovie.movieId}`),api<Showtime[]>(`/showtimes/movie/${selectedMovie.movieId}`)])
-      .then(([m,s])=>{if(active){setDetail(m);setShows(Array.isArray(s)?s:[]);}})
-      .catch(e=>{if(active)setError(errorMessage(e))})
-      .finally(()=>{if(active)setLoading(false)});
+    if(mode!=='list')return;
+    let active=true;
+    void Promise.resolve().then(()=>{if(active)return loadList()});
     return ()=>{active=false};
-  },[mode,selectedMovie?.movieId]);
-  const filtered=useMemo(()=>movies.filter(m=>(filter==='ALL'||m.status===filter)&&m.title.toLocaleLowerCase('vi-VN').includes(search.trim().toLocaleLowerCase('vi-VN'))),[movies,filter,search]);
+  },[mode,loadList]);
+  const selectedMovieId=selectedMovie?.movieId;
+  useEffect(()=>{
+    if(mode!=='detail'||selectedMovieId==null)return;
+    let active=true;
+    void Promise.resolve().then(()=>{
+      if(!active)return;
+      setDetail(null);setShows([]);setLoading(true);setError('');setRatingMessage('');setRating(0);
+      return Promise.all([api<Movie>(`/movies/${selectedMovieId}`),api<Showtime[]>(`/showtimes/movie/${selectedMovieId}`)])
+        .then(([m,s])=>{if(active){setDetail(m);setShows(Array.isArray(s)?s:[]);}})
+        .catch(e=>{if(active)setError(errorMessage(e))})
+        .finally(()=>{if(active)setLoading(false)});
+    });
+    return ()=>{active=false};
+  },[mode,selectedMovieId]);
+  const filtered=useMemo(()=>movies.filter(m=>{
+    const matching=filter==='EARLY'?earlyIds.includes(m.movieId):m.status===filter;
+    return matching&&m.title.toLocaleLowerCase('vi-VN').includes(search.trim().toLocaleLowerCase('vi-VN'));
+  }),[movies,filter,search,earlyIds]);
+  async function chooseFilter(next:'COMING_SOON'|'NOW_SHOWING'|'EARLY'){
+    setFilter(next);
+    if(next!=='EARLY'||earlyChecked||earlyChecking||loading||now===null)return;
+    setEarlyChecking(true);
+    const currentRequest=++earlyRequest.current;
+    const candidates=movies.filter(m=>m.status==='COMING_SOON'&&!!m.releaseDate);
+    const found:number[]=[];
+    const currentTime=now;
+    // Read-only lookups, at most four parallel requests. Never invent an early screening.
+    try{
+      for(let i=0;i<candidates.length;i+=4){
+        const batch=candidates.slice(i,i+4);
+        const results=await Promise.allSettled(batch.map(m=>api<Showtime[]>(`/showtimes/movie/${m.movieId}`)));
+        if(currentRequest!==earlyRequest.current)return;
+        results.forEach((result,index)=>{
+          if(result.status!=='fulfilled'||!Array.isArray(result.value))return;
+          const movie=batch[index];
+          const release=Date.parse(movie.releaseDate!);
+          if(!Number.isFinite(release))return;
+          if(result.value.some(show=>show.status==='OPEN'&&Number.isFinite(Date.parse(show.startTime))&&Date.parse(show.startTime)>currentTime&&Date.parse(show.startTime)<release)){
+            found.push(movie.movieId);
+          }
+        });
+      }
+      if(currentRequest===earlyRequest.current){setEarlyIds(found);setEarlyChecked(true)}
+    }finally{
+      if(currentRequest===earlyRequest.current)setEarlyChecking(false);
+    }
+  }
   const featured=movies.find(m=>m.status==='NOW_SHOWING')??movies[0];
   async function sendRating(stars:number){
     if(!selectedMovie||!token){onAuth?.();return;}
@@ -39,12 +92,19 @@ export default function Movies({mode,selectedMovie,token,favorites,onToggleFav,o
     catch(e){setRatingMessage(errorMessage(e))}
   }
   if(mode==='list')return <SimpleScroll refreshing={loading&&movies.length>0} onRefresh={()=>void loadList()}>
-    <View style={{marginTop:7,marginBottom:16}}><Kicker>NOW SHOWING · CINEHUNT</Kicker><Text style={[S.title,{fontSize:32,marginTop:9}]}>Thế giới điện ảnh<Text style={{color:C.purple}}>.</Text></Text><Text style={[S.muted,{marginTop:7}]}>Những câu chuyện đáng xem, ngay trong tầm tay.</Text></View>
+    <View style={{marginTop:7,marginBottom:14}}><Kicker>CINEHUNT · LỊCH CHIẾU THEO PHIM</Kicker><Text style={[S.title,{fontSize:32,marginTop:9}]}>Phim tại CineHunt<Text style={{color:C.purple}}>.</Text></Text><Text style={[S.muted,{marginTop:7}]}>Khám phá phim, chọn lịch chiếu phù hợp.</Text></View>
+    <View style={{flexDirection:'row',marginBottom:16,borderBottomWidth:1,borderBottomColor:C.stroke}}>
+      {([['COMING_SOON','SẮP CHIẾU'],['NOW_SHOWING','ĐANG CHIẾU'],['EARLY','SUẤT CHIẾU SỚM']] as const).map(([value,label])=>
+        <Pressable key={value} accessibilityRole="tab" accessibilityState={{selected:filter===value}} onPress={()=>void chooseFilter(value)} style={{flex:1,minHeight:53,alignItems:'center',justifyContent:'center',paddingHorizontal:2,borderBottomWidth:3,borderBottomColor:filter===value?C.purple:'transparent'}}>
+          <Text style={{fontSize:width<380?10:11,fontWeight:'900',textAlign:'center',color:filter===value?C.purple:C.muted}}>{label}</Text>
+        </Pressable>
+      )}
+    </View>
     {featured&&<GlowPanel from="#513577" to="#0D2341" style={{marginBottom:22}}>
       <Pressable onPress={()=>onOpen(featured)} accessibilityRole="button" accessibilityLabel={`Khám phá phim ${featured.title}`} style={{flexDirection:'row',alignItems:'center',gap:14}}>
         <View style={{flex:1,justifyContent:'center',gap:10}}>
           <Kicker color="#98EFFF">PHIM NỔI BẬT</Kicker>
-          <Text numberOfLines={3} style={{fontSize:24,fontWeight:'900',letterSpacing:-.8,color:C.white,lineHeight:29}}>{featured.title}</Text>
+          <Text numberOfLines={3} style={{fontSize:24,fontWeight:'900',letterSpacing:-.8,color:C.hero,lineHeight:29}}>{featured.title}</Text>
           <Text style={{fontSize:11.5,color:'#DFD7EE'}}>{featured.durationMinutes} phút  ·  {featured.ageRating??'P'}  ·  {featured.genres?.[0]?.genreName??'Điện ảnh'}</Text>
           <View style={{backgroundColor:C.purple,alignSelf:'flex-start',paddingHorizontal:13,paddingVertical:10,borderRadius:12,marginTop:7}}><Text style={{color:C.bg,fontWeight:'900',fontSize:12}}>Khám phá ngay  ↗</Text></View>
         </View>
@@ -55,40 +115,44 @@ export default function Movies({mode,selectedMovie,token,favorites,onToggleFav,o
       <Text style={{color:C.purple,fontSize:23}}>⌕</Text>
       <TextInput placeholder="Bạn muốn xem phim gì?" placeholderTextColor={C.soft} style={{flex:1,color:C.white,fontSize:14,paddingHorizontal:11,paddingVertical:16}} value={search} onChangeText={setSearch}/>
     </View>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:9,paddingBottom:3}}>
-      {([['ALL','Tất cả'],['NOW_SHOWING','Đang chiếu'],['COMING_SOON','Sắp chiếu']] as const).map(([value,label])=><Pressable key={value} onPress={()=>setFilter(value)} style={{borderRadius:15,paddingVertical:11,paddingHorizontal:17,backgroundColor:filter===value?C.purple:C.panel2,borderWidth:1,borderColor:filter===value?C.purple:C.stroke}}><Text style={{color:filter===value?C.bg:C.muted,fontWeight:'800',fontSize:12}}>{label}</Text></Pressable>)}
-    </ScrollView>
-    <SectionHeading title="Phim dành cho bạn" subtitle={error?'Không thể tải danh sách, hãy thử lại':`${filtered.length} bộ phim trong danh sách`}/>
+
+    <SectionHeading title={filter==='COMING_SOON'?'Phim sắp chiếu':filter==='EARLY'?'Suất chiếu sớm':'Phim đang chiếu'} subtitle={error?'Không thể tải danh sách, hãy thử lại':`${filtered.length} bộ phim`}/>
+    {filter==='EARLY'&&earlyChecking&&<View style={{marginBottom:10}}><Loader/><Text style={[S.muted,{textAlign:'center',marginTop:8,fontSize:12}]}>Đang kiểm tra lịch chiếu sớm từ hệ thống...</Text></View>}
+    {filter==='EARLY'&&!earlyChecking&&earlyChecked&&filtered.length===0&&<Notice text="Chưa tìm thấy suất chiếu mở bán trước ngày khởi chiếu trong dữ liệu hiện có."/>}
     {loading&&<Loader/>}{!!error&&<Notice bad text={error}/>}
-    <View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:17}}>
-      {filtered.map(m=><View key={m.movieId} style={{width:'48.4%'}}>
-        <Pressable accessibilityRole="button" accessibilityLabel={`Xem phim ${m.title}`} onPress={()=>onOpen(m)} style={{borderRadius:19,backgroundColor:C.panel,borderWidth:1,borderColor:C.stroke,overflow:'hidden',paddingBottom:14}}>
-          <View style={{alignItems:'center',paddingTop:8}}><FilmArt movie={m} size={posterSize} radius={14}/></View>
-          <View style={{paddingHorizontal:12,paddingTop:11}}>
-            <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}><Kicker color={m.status==='NOW_SHOWING'?C.green:C.orange}>{m.status==='NOW_SHOWING'?'ĐANG CHIẾU':'SẮP CHIẾU'}</Kicker><Text style={{color:C.soft,fontSize:11}}>{m.ageRating??'P'}</Text></View>
-            <Text numberOfLines={2} style={{fontSize:14.5,fontWeight:'900',color:C.white,marginTop:7,minHeight:40,lineHeight:20}}>{m.title}</Text>
-            <Text style={{fontSize:11.5,color:C.muted,marginTop:4}}>{m.durationMinutes} phút · {m.genres?.[0]?.genreName??'Phim'}</Text>
+    <View style={{flexDirection:'row',flexWrap:'wrap',columnGap:'2.75%',rowGap:20}}>
+      {filtered.map(m=><View key={m.movieId} style={{width:'31.5%'}}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Xem phim ${m.title}`} onPress={()=>onOpen(m)} style={{borderRadius:13,overflow:'hidden'}}>
+          <View style={{alignItems:'center',position:'relative'}}>
+            <FilmArt movie={m} size={posterSize} radius={11}/>
+            <View style={{position:'absolute',top:6,left:6,backgroundColor:m.ageRating==='T18'?'#D96A86':m.ageRating==='T16'?'#E5B642':'#7EC9B8',borderRadius:5,paddingHorizontal:5,paddingVertical:3}}>
+              <Text style={{fontSize:10,fontWeight:'900',color:'#172039'}}>{m.ageRating??'P'}</Text>
+            </View>
           </View>
+          <Text numberOfLines={2} style={{color:C.white,textAlign:'center',fontWeight:'800',fontSize:12.5,lineHeight:17,minHeight:34,marginTop:9}}>{m.title}</Text>
+          <Text style={{color:C.muted,textAlign:'center',fontSize:11.5,marginTop:4}}>{m.durationMinutes} phút</Text>
         </Pressable>
-        <Pressable accessibilityLabel="Yêu thích" accessibilityRole="button" onPress={()=>onToggleFav(m.movieId)} style={{position:'absolute',top:13,right:13,backgroundColor:'#0B0D20CF',borderRadius:15,width:30,height:30,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'#FFFFFF35'}}><Text style={{fontSize:19,color:favorites.includes(m.movieId)?C.red:C.white}}>{favorites.includes(m.movieId)?'♥':'♡'}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={favorites.includes(m.movieId)?`Bỏ yêu thích ${m.title}`:`Yêu thích ${m.title}`} onPress={()=>onToggleFav(m.movieId)} style={{position:'absolute',right:2,top:Math.max(12,posterSize-26),backgroundColor:C.panel,borderRadius:15,paddingHorizontal:7,paddingVertical:3,borderWidth:1,borderColor:C.stroke}}>
+          <Text style={{color:favorites.includes(m.movieId)?C.red:C.muted,fontSize:16}}>{favorites.includes(m.movieId)?'♥':'♡'}</Text>
+        </Pressable>
       </View>)}
     </View>
-    {!loading&&!error&&!filtered.length&&<Notice text="Không tìm thấy phim phù hợp. Hãy thử từ khóa khác."/>}
+    {!loading&&!error&&!filtered.length&&filter!=='EARLY'&&<Notice text="Không có phim phù hợp với bộ lọc này. Hãy thử mục khác."/>}
     <View style={{marginTop:21}}><Button title="↻  Tải lại danh sách phim" kind="outline" onPress={()=>void loadList()}/></View>
   </SimpleScroll>;
   const movie=detail??selectedMovie;
-  const upcoming=shows.filter(s=>s.status==='OPEN'&&new Date(s.startTime).getTime()>Date.now()).sort((a,b)=>new Date(a.startTime).getTime()-new Date(b.startTime).getTime());
+  const upcoming=now===null?[]:shows.filter(s=>s.status==='OPEN'&&new Date(s.startTime).getTime()>now).sort((a,b)=>new Date(a.startTime).getTime()-new Date(b.startTime).getTime());
   return <SimpleScroll>
     {loading&&<Loader/>}{!!error&&<Notice text={error} bad/>}
     {movie&&<>
       <GlowPanel from="#452B68" to="#10213B" style={{marginTop:5}}>
         <View style={{alignItems:'center'}}><FilmArt movie={movie} size={174} radius={19}/></View>
-        <Text style={{fontSize:27,color:C.white,fontWeight:'900',marginTop:19,letterSpacing:-.4,textAlign:'center'}}>{movie.title}</Text>
+        <Text style={{fontSize:27,color:C.hero,fontWeight:'900',marginTop:19,letterSpacing:-.4,textAlign:'center'}}>{movie.title}</Text>
         {!!movie.originalTitle&&<Text style={[S.muted,{textAlign:'center',marginTop:4}]}>{movie.originalTitle}</Text>}
         <Text style={{color:'#D7D8F1',textAlign:'center',marginTop:13,fontSize:12}}>{movie.durationMinutes} phút  •  {movie.ageRating??'P'}  •  {movie.status==='NOW_SHOWING'?'Đang chiếu':'Sắp chiếu'}</Text>
         <View style={{flexDirection:'row',justifyContent:'center',marginTop:15,gap:17}}>
           <Text style={{color:C.orange,fontWeight:'800'}}>★  {movie.averageRating?Number(movie.averageRating).toFixed(1):'Mới'}</Text>
-          <Text style={{color:C.cyan,fontWeight:'800'}}>◈  {movie.genres?.[0]?.genreName??'Điện ảnh'}</Text>
+          <Text style={{color:C.heroCyan,fontWeight:'800'}}>◈  {movie.genres?.[0]?.genreName??'Điện ảnh'}</Text>
         </View>
         <Button title={favorites.includes(movie.movieId)?'♥  Đã thêm yêu thích':'♡  Thêm vào yêu thích'} kind="outline" onPress={()=>onToggleFav(movie.movieId)}/>
       </GlowPanel>

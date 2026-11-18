@@ -5,10 +5,11 @@ import { useAuth } from '../context/AuthContext';
 import { resolveAssetUrl } from '../utils/assetUrl';
 import { useMovieEngagement } from '../hooks/useMovieEngagement';
 import NotificationBell from './NotificationBell';
+import ThemeToggle from './ThemeToggle';
 import authApi from '../api/authApi';
 
 export default function Navbar() {
-  const { darkMode, toggleDarkMode } = useTheme();
+  const { darkMode } = useTheme();
   const { isLoggedIn, user, logout } = useAuth();
   const location = useLocation();
   const { pathname, hash } = location;
@@ -98,15 +99,7 @@ export default function Navbar() {
             </select>
           </label>
 
-          <button
-            type="button"
-            onClick={toggleDarkMode}
-            className="stitch-icon-btn"
-            aria-label={darkMode ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
-            title={darkMode ? 'Giao diện sáng' : 'Giao diện tối'}
-          >
-            <span className="material-symbols-outlined">{darkMode ? 'light_mode' : 'dark_mode'}</span>
-          </button>
+          <ThemeToggle />
 
           {isLoggedIn && <NotificationBell darkMode={darkMode} />}
 

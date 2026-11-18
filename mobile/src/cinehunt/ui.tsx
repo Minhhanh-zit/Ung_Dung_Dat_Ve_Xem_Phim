@@ -1,25 +1,59 @@
 import {useState, type ReactNode} from 'react';
 import {ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, type ViewStyle} from 'react-native';
-import type {Movie} from './types';
+import type {Movie} from '../types';
 
-export const C = {
+export type ThemeMode='light'|'dark';
+const DARK={
   bg:'#080B16', bgSoft:'#0E1324', panel:'#141A30', panel2:'#1C2540',
-  stroke:'#303957', purple:'#C2A5FF', lavender:'#E4C8FF', violet:'#9267F5',
+  stroke:'#303957', purple:'#C2A5FF', violet:'#9267F5',
   cyan:'#59D7FF', green:'#45DBB1', white:'#FAFAFF', muted:'#A4AEC9',
   soft:'#7785A6', orange:'#FFD087', red:'#FF879F',
+  brand:'#E4C8FF', line:'#242B42', tabBg:'#0E1324', tabLine:'#38405C',
+  logoBg:'#3B2C67', logoLine:'#7763B3', avatarBg:'#25203B', avatarLine:'#574D7F',
+  outlineBg:'#0A1830', outlineLine:'#467EB1', dangerBg:'#3A1F32', dangerLine:'#9C4862',
+  okBg:'#163635', okLine:'#24564E', okText:'#9EF0DB', badBg:'#3A2235', badLine:'#764154', badText:'#FFBDC9',
+  chipBg:'#202D4C', chipLine:'#3C658A', iconA:'#302544', iconB:'#1E3650', iconC:'#322947',
+  assistBg:'#202746', assistLine:'#595B93',
+  seatFree:'#294D52', seatBlocked:'#3A3B50', seatOff:'#464760', cancelBar:'#774662',
+  glow:'#C2A5FF',
 };
-export const S=StyleSheet.create({
-  screen:{flex:1,backgroundColor:C.bg},
-  scroll:{paddingHorizontal:20,paddingTop:12,paddingBottom:48},
-  title:{color:C.white,fontSize:30,fontWeight:'900',letterSpacing:-.8},
-  h2:{color:C.white,fontSize:21,fontWeight:'800',letterSpacing:-.35},
-  text:{color:C.white,fontSize:15},
-  muted:{color:C.muted,fontSize:13.5,lineHeight:21},
-  card:{backgroundColor:C.panel,borderRadius:23,padding:18,borderWidth:1,borderColor:C.stroke,marginBottom:14},
-  input:{backgroundColor:C.panel2,color:C.white,borderColor:C.stroke,borderWidth:1,borderRadius:17,paddingHorizontal:17,paddingVertical:15,fontSize:15,marginTop:9},
-  pill:{paddingHorizontal:15,paddingVertical:11,borderRadius:14,backgroundColor:C.panel2},
-  row:{flexDirection:'row',alignItems:'center',gap:10},
-});
+const LIGHT:typeof DARK={
+  bg:'#FBF5E8', bgSoft:'#F5ECD8', panel:'#FFFDF8', panel2:'#F5ECD8',
+  stroke:'#E2D5BA', purple:'#6C3FD1', violet:'#5226B5',
+  cyan:'#1F5FE0', green:'#0F7A4F', white:'#2B2236', muted:'#5F5370',
+  soft:'#85789A', orange:'#A8620A', red:'#B42318',
+  brand:'#5226B5', line:'#E8DBC0', tabBg:'#FFFCF5', tabLine:'#E2D5BA',
+  logoBg:'#E7DDFB', logoLine:'#B9A2F0', avatarBg:'#E7DDFB', avatarLine:'#B9A2F0',
+  outlineBg:'#EEF3FF', outlineLine:'#7B97F5', dangerBg:'#FBE4E0', dangerLine:'#E0968D',
+  okBg:'#E3F5EB', okLine:'#9BD3B5', okText:'#0B5C3B', badBg:'#FBE4E0', badLine:'#E0968D', badText:'#8A1C12',
+  chipBg:'#E4ECFF', chipLine:'#9DB5F5', iconA:'#EBE1FC', iconB:'#DDE8FF', iconC:'#EBE1FC',
+  assistBg:'#EFE8FD', assistLine:'#C9B8F3',
+  seatFree:'#BFE3D0', seatBlocked:'#D9CFB8', seatOff:'#C9BEA5', cancelBar:'#D9877A',
+  glow:'#6C3FD1',
+};
+// Màu dùng bên trong thẻ gradient tím–xanh: luôn sáng ở cả hai chế độ.
+const FIXED={lavender:'#E4C8FF', hero:'#FAFAFF', heroCyan:'#59D7FF', heroGreen:'#45DBB1'};
+export const C:typeof DARK&typeof FIXED={...LIGHT,...FIXED};
+function makeStyles(){
+  return StyleSheet.create({
+    screen:{flex:1,backgroundColor:C.bg},
+    scroll:{paddingHorizontal:20,paddingTop:12,paddingBottom:48},
+    title:{color:C.white,fontSize:30,fontWeight:'900',letterSpacing:-.8},
+    h2:{color:C.white,fontSize:21,fontWeight:'800',letterSpacing:-.35},
+    text:{color:C.white,fontSize:15},
+    muted:{color:C.muted,fontSize:13.5,lineHeight:21},
+    card:{backgroundColor:C.panel,borderRadius:23,padding:18,borderWidth:1,borderColor:C.stroke,marginBottom:14},
+    input:{backgroundColor:C.panel2,color:C.white,borderColor:C.stroke,borderWidth:1,borderRadius:17,paddingHorizontal:17,paddingVertical:15,fontSize:15,marginTop:9},
+    pill:{paddingHorizontal:15,paddingVertical:11,borderRadius:14,backgroundColor:C.panel2},
+    row:{flexDirection:'row',alignItems:'center',gap:10},
+  });
+}
+export const S=makeStyles();
+// Đổi bảng màu tại chỗ; App gọi khi render nên mọi màn hình đọc màu mới.
+export function applyTheme(mode:ThemeMode){
+  Object.assign(C,mode==='dark'?DARK:LIGHT,FIXED);
+  Object.assign(S,makeStyles());
+}
 
 export function GradientFill({from=C.violet,to='#12304B',accent=C.purple}: {from?:string;to?:string;accent?:string}){
   // Decoration is strictly absolute-positioned. It cannot change the height of
@@ -47,9 +81,9 @@ export function SectionHeading({title,subtitle,right}: {title:string;subtitle?:s
   </View>;
 }
 export function Button({title,onPress,kind='primary',disabled=false}: {title:string;onPress:()=>void;kind?:'primary'|'outline'|'danger'|'muted';disabled?:boolean}){
-  const style=kind==='primary'?{backgroundColor:C.purple,borderColor:C.purple}:
-    kind==='outline'?{backgroundColor:'#0A1830',borderColor:'#467EB1'}:
-    kind==='danger'?{backgroundColor:'#3A1F32',borderColor:'#9C4862'}:
+  const style=kind==='primary'?{backgroundColor:C.purple,borderColor:C.purple,shadowColor:C.glow,shadowOpacity:.45,shadowRadius:12,shadowOffset:{width:0,height:4},elevation:4}:
+    kind==='outline'?{backgroundColor:C.outlineBg,borderColor:C.outlineLine}:
+    kind==='danger'?{backgroundColor:C.dangerBg,borderColor:C.dangerLine}:
     {backgroundColor:C.panel2,borderColor:C.stroke};
   return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={[{minHeight:49,paddingHorizontal:16,paddingVertical:13,borderRadius:15,borderWidth:1,justifyContent:'center',alignItems:'center',opacity:disabled?.42:1,marginVertical:5},style]}>
     <Text style={{fontSize:14,fontWeight:'900',letterSpacing:.15,color:kind==='primary'?C.bg:kind==='danger'?C.red:kind==='outline'?C.cyan:C.white,textAlign:'center'}}>{title}</Text>
@@ -60,7 +94,7 @@ export function Field({label,value,onChangeText,placeholder,secure=false,keyboar
   return <View style={{marginBottom:13}}><Label>{label}</Label><TextInput style={S.input} value={value} onChangeText={onChangeText} placeholder={placeholder??label} placeholderTextColor={C.soft} secureTextEntry={secure} autoCorrect={false} autoCapitalize={keyboardType==='email-address'?'none':'sentences'} keyboardType={keyboardType}/></View>;
 }
 export function Notice({text,bad=false}:{text:string;bad?:boolean}){
-  return <View style={{backgroundColor:bad?'#3A2235':'#163635',borderWidth:1,borderColor:bad?'#764154':'#24564E',padding:15,borderRadius:17,marginVertical:10}}><Text style={{color:bad?'#FFBDC9':'#9EF0DB',lineHeight:22,fontSize:13.5}}>{text}</Text></View>;
+  return <View style={{backgroundColor:bad?C.badBg:C.okBg,borderWidth:1,borderColor:bad?C.badLine:C.okLine,padding:15,borderRadius:17,marginVertical:10}}><Text style={{color:bad?C.badText:C.okText,lineHeight:22,fontSize:13.5}}>{text}</Text></View>;
 }
 export function Loader(){return <ActivityIndicator size="large" color={C.purple} style={{marginVertical:32}}/>}
 

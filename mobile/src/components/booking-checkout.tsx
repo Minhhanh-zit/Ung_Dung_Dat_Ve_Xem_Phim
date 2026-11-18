@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import BookingPayment from './booking-payment';
 import {
   ActivityIndicator,
@@ -93,7 +93,7 @@ export default function BookingCheckout({
   const keyRef = useRef<string | null>(null);
   const busyRef = useRef(false);
 
-  async function findExisting(): Promise<Booking | null> {
+  const findExisting = useCallback(async (): Promise<Booking | null> => {
     const data = await request('/bookings/my', token);
 
     if (!Array.isArray(data)) {
@@ -106,31 +106,38 @@ export default function BookingCheckout({
       (!item.expiresAt ||
         new Date(item.expiresAt).getTime() > Date.now())
     ) ?? null;
-  }
+  }, [token, showtimeId]);
 
   useEffect(() => {
     let active = true;
 
-    setChecking(true);
-    setVerified(false);
+    const timer = setTimeout(() => {
+      if (!active) return;
 
-    void findExisting()
-      .then((found) => {
-        if (!active) return;
-        setBooking(found);
-        setVerified(true);
-      })
-      .catch(() => {
-        if (active) {
-          setError('Chưa kiểm tra được đơn đang chờ thanh toán.');
-        }
-      })
-      .finally(() => {
-        if (active) setChecking(false);
-      });
+      setChecking(true);
+      setVerified(false);
 
-    return () => { active = false; };
-  }, [token, showtimeId]);
+      void findExisting()
+        .then((found) => {
+          if (!active) return;
+          setBooking(found);
+          setVerified(true);
+        })
+        .catch(() => {
+          if (active) {
+            setError('Chưa kiểm tra được đơn đang chờ thanh toán.');
+          }
+        })
+        .finally(() => {
+          if (active) setChecking(false);
+        });
+    }, 0);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [findExisting]);
 
   async function recheck() {
     setChecking(true);

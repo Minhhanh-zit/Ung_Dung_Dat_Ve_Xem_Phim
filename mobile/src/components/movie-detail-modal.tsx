@@ -161,11 +161,18 @@ export default function MovieDetailModal({
     return () => controller.abort();
   }, [movieId]);
 
+  const [clockNow,setClockNow] = useState<number | null>(null);
+  useEffect(() => {
+    const initial = setTimeout(() => setClockNow(Date.now()), 0);
+    const interval = setInterval(() => setClockNow(Date.now()), 60000);
+    return () => { clearTimeout(initial); clearInterval(interval); };
+  }, []);
+
   const upcoming = showtimes
     .filter(
       (item) =>
         item.status === 'OPEN' &&
-        new Date(item.startTime).getTime() > Date.now(),
+        clockNow !== null && new Date(item.startTime).getTime() > clockNow,
     )
     .sort(
       (a, b) =>

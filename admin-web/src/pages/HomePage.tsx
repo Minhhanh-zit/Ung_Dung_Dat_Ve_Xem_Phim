@@ -3,6 +3,8 @@ import HeroBanner from '../components/HeroBanner';
 import MovieSection from '../components/MovieSection';
 import RecommendedMovies from '../components/RecommendedMovies';
 import { useMovies } from '../hooks/useMovies';
+import { useAuth } from '../context/AuthContext';
+import { resolveAssetUrl } from '../utils/assetUrl';
 
 type Tab = 'NOW_SHOWING' | 'COMING_SOON';
 const HERO_COUNT = 5;
@@ -10,6 +12,8 @@ const HERO_COUNT = 5;
 export default function HomePage() {
   const { movies, loading, error, fetchMovies } = useMovies();
   const [activeTab, setActiveTab] = useState<Tab>('NOW_SHOWING');
+  const { isLoggedIn, user } = useAuth();
+  const displayName = (user?.fullName || user?.email || '').trim().split(' ').pop();
 
   const visible = useMemo(
     () => movies.filter((movie) => movie.status === 'NOW_SHOWING' || movie.status === 'COMING_SOON'),
@@ -48,6 +52,17 @@ export default function HomePage() {
     <div>
       <HeroBanner movies={heroMovies} />
       <section className="stitch-container py-20">
+        {isLoggedIn && displayName && (
+          <div className="cc-greeting">
+            <span className="cc-greeting__avatar">
+              {user?.avatarUrl ? <img src={resolveAssetUrl(user.avatarUrl)} alt="" /> : displayName.charAt(0).toUpperCase()}
+            </span>
+            <div>
+              <h2>Chào {displayName}, hôm nay bạn muốn xem gì?</h2>
+              <p>{nowShowing.length} phim đang chiếu, chọn một phim và đặt vé trong vài bước.</p>
+            </div>
+          </div>
+        )}
         <RecommendedMovies limit={8} fallbackMovies={movies} />
 
         <div className="stitch-tabs justify-center mb-12">
