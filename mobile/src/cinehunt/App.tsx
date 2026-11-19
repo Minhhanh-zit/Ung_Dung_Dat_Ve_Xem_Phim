@@ -2,8 +2,9 @@ import {useEffect,useState} from 'react';
 import {Pressable, StatusBar, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import type {Movie, Screen, Showtime, Tab, User} from '../types';
-import {ApiError, api} from '../services/apiClient';
-import {loadFavorites, loadSession, loadTheme, saveFavorites, saveSession, saveTheme} from '../store/persist';
+import {ApiError, api, configureSessionRefresh} from '../services/apiClient';
+import {refreshNativeAccessToken,subscribeNativeTokenChanges} from '../services/authSession';
+import {loadFavorites, loadSession, loadTheme, saveFavorites, saveSession, saveTheme, saveRefreshToken} from '../store/persist';
 import {C, S, applyTheme} from './ui';
 import Movies from './Movies';
 import SeatFlow from './SeatFlow';
@@ -32,6 +33,14 @@ export default function CineHuntApp(){
   const [favorites,setFavorites]=useState<number[]>([]);
   const [returnScreen,setReturnScreen]=useState<Screen>('main');
   const [ordersRevision,setOrdersRevision]=useState(0);
+  useEffect(()=>{
+    const unsubscribe=subscribeNativeTokenChanges(next=>{
+      setToken(next);
+      if(next===null){setUser(null);setScreen('main');setTab('account');}
+    });
+    configureSessionRefresh(refreshNativeAccessToken);
+    return ()=>{configureSessionRefresh(null);unsubscribe()};
+  },[]);
   // Khôi phục theme, yêu thích và phiên đăng nhập đã lưu khi mở app.
   useEffect(()=>{
     let cancelled=false;
@@ -42,7 +51,10 @@ export default function CineHuntApp(){
       if(session){
         try{
           const me=await api<User>('/users/me',{token:session.token});
-          if(!cancelled){setToken(session.token);setUser(me);}
+          if(!cancelled){
+            const freshSession=await loadSession();
+            setToken(freshSession?.token??session.token);setUser(me);
+          }
         }catch(e){
           // Token hết hạn thì xóa; lỗi mạng thì giữ phiên để thử lại sau.
           if(e instanceof ApiError&&e.status===401)await saveSession(null);
@@ -58,7 +70,7 @@ export default function CineHuntApp(){
   useEffect(()=>{if(ready)void saveTheme(dark?'dark':'light')},[ready,dark]);
   function requestAuth(back:Screen){setReturnScreen(back);setScreen('auth')}
   function setLogin(nextToken:string,nextUser:User){setToken(nextToken);setUser(nextUser);setScreen(returnScreen)}
-  function logout(){setToken(null);setUser(null);setScreen('main');setTab('account')}
+  function logout(){void saveRefreshToken(null);setToken(null);setUser(null);setScreen('main');setTab('account')}
   function selectTab(next:Tab){setTab(next);setScreen('main')}
   function openBooking(ref:string){setBookingId(ref);setScreen('booking');setOrdersRevision(n=>n+1)}
   function showSeats(item:Showtime){setShowtime(item);setScreen(token?'seats':'auth');if(!token)setReturnScreen('seats')}

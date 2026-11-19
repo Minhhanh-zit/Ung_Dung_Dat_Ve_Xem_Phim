@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useState} from 'react';
-import {Alert,Text,View} from 'react-native';
+import {Alert,Platform,Text,View} from 'react-native';
 import {api,errorMessage} from '../services/apiClient';
+import {saveRefreshToken} from '../store/persist';
 import {Button,C,Field,GlowPanel,Kicker,Loader,Notice,S,SectionHeading,SimpleScroll} from './ui';
 import type {User} from '../types';
 
@@ -36,7 +37,15 @@ export default function Account({token,user,forceAuth=false,onLogin,onLogout}:Pr
         await api('/auth/register',{method:'POST',body:{fullName:fullName.trim(),email:email.trim(),password,phone:phone.trim()||undefined}});
         setMode('login');setPassword('');setInfo('Đăng ký thành công. Vui lòng đăng nhập.');return;
       }
-      const result=await api<{accessToken:string;user:User}>('/auth/login',{method:'POST',body:{email:email.trim(),password}});
+      const native=Platform.OS!=='web';
+      const result=await api<{accessToken:string;refreshToken?:string;user:User}>(
+        native?'/auth/native/login':'/auth/login',
+        {method:'POST',body:{email:email.trim(),password}},
+      );
+      if(native){
+        if(!result.refreshToken)throw new Error('Máy chủ chưa hỗ trợ đăng nhập Mobile an toàn.');
+        await saveRefreshToken(result.refreshToken);
+      }
       if(!result.accessToken||!result.user)throw new Error('Backend chưa trả JWT');
       setPassword('');onLogin(result.accessToken,result.user);
     }catch(e){setError(errorMessage(e))}finally{setLoading(false)}
@@ -49,7 +58,7 @@ export default function Account({token,user,forceAuth=false,onLogin,onLogout}:Pr
     const r=await api<{message?:string;ticketCode?:string}>(`/tickets/${encodeURIComponent(code.trim())}/checkin`,{method:'POST',token});
     setInfo(r.message||`Đã soát vé ${r.ticketCode||code}`);setCode('');
   }catch(e){setError(errorMessage(e))}finally{setLoading(false)}}
-  async function logout(){if(token){try{await api('/auth/logout',{method:'POST',token});}catch{/* Clear local session even when network fails. */}}onLogout()}
+  async function logout(){if(token){try{await api('/auth/logout',{method:'POST',token});}catch{/* Clear locally even when offline. */}}await saveRefreshToken(null);onLogout()}
   if(forceAuth||!token)return <SimpleScroll>
     <View style={{marginTop:24,marginBottom:23}}><Kicker>WELCOME BACK</Kicker><Text style={[S.title,{fontSize:32,marginTop:10}]}>{mode==='login'?'Rất vui được gặp lại.':'Gia nhập CineHunt.'}</Text><Text style={[S.muted,{marginTop:9}]}>Tài khoản của bạn là tấm vé mở ra thế giới điện ảnh.</Text></View>
     <GlowPanel from="#3F285C" to="#172944" style={{marginBottom:23}}>

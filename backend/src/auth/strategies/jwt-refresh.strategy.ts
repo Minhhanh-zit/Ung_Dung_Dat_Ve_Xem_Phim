@@ -5,6 +5,14 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { Request } from 'express';
 
 export const REFRESH_COOKIE_NAME = 'cinehunt_refresh';
+const bearerRefresh=ExtractJwt.fromAuthHeaderAsBearerToken();
+
+// Bearer refresh is accepted ONLY for the dedicated native refresh route.
+function nativeRefreshBearer(request: Request | undefined): string | null {
+  return request?.path === '/auth/native/refresh'
+    ? bearerRefresh(request)
+    : null;
+}
 
 export function extractRefreshTokenFromCookie(
   request: Request | undefined,
@@ -37,6 +45,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
   constructor(configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
+        (request: Request) => nativeRefreshBearer(request),
         (request: Request) => extractRefreshTokenFromCookie(request),
       ]),
       secretOrKey: configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
@@ -45,7 +54,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
   }
 
   async validate(request: Request, payload: any) {
-    const refreshToken = extractRefreshTokenFromCookie(request);
+    const refreshToken = nativeRefreshBearer(request) || extractRefreshTokenFromCookie(request);
     if (!refreshToken) {
       throw new UnauthorizedException('Thiếu refresh token');
     }

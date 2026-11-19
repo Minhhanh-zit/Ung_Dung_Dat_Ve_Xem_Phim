@@ -104,6 +104,25 @@ export class AuthController {
     return safeResult;
   }
 
+  // Native login returns the rotating refresh token in JSON for SecureStore.
+  // The browser login above still uses an HttpOnly cookie, unchanged.
+  @Throttle(AUTH_THROTTLE)
+  @Post('native/login')
+  async nativeLogin(@Body() dto: LoginDto,@Req() request: Request) {
+    return this.authService.login(dto,{
+      deviceInfo:request.headers['user-agent'],ipAddress:request.ip,
+    });
+  }
+
+  @Throttle(REFRESH_THROTTLE)
+  @Post('native/refresh')
+  @UseGuards(JwtRefreshGuard)
+  async nativeRefresh(@CurrentUser() user: any,@Req() request: Request) {
+    return this.authService.refresh(user.userId,user.refreshToken,{
+      deviceInfo:request.headers['user-agent'],ipAddress:request.ip,
+    });
+  }
+
   @Throttle(REFRESH_THROTTLE)
   @Post('refresh')
   @UseGuards(JwtRefreshGuard)
