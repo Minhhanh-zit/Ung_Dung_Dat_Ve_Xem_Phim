@@ -11,6 +11,7 @@ import SeatFlow from './SeatFlow';
 import BookingView from './BookingView';
 import Orders from './Orders';
 import Discover from './Discover';
+import ChatAssistant from './ChatAssistant'; // CINEHUNT_FLOATING_AI_V1
 import Account from './Account';
 
 const TABS: {id:Tab;glyph:string;label:string}[]=[
@@ -20,6 +21,7 @@ const TABS: {id:Tab;glyph:string;label:string}[]=[
   {id:'account',glyph:'♙',label:'Tài khoản'},
 ];
 export default function CineHuntApp(){
+  const [chatOpen,setChatOpen]=useState(false);
   const [ready,setReady]=useState(false);
   const [dark,setDark]=useState(false);
   applyTheme(dark?'dark':'light');
@@ -109,6 +111,12 @@ export default function CineHuntApp(){
       {screen==='booking'&&bookingId&&<BookingView bookingId={bookingId} token={token} onAuth={()=>requestAuth('booking')} onCancelled={()=>{setOrdersRevision(v=>v+1);setScreen('main');setTab('orders')}} onTickets={()=>setScreen('tickets')}/>}
       {screen==='tickets'&&bookingId&&<BookingView bookingId={bookingId} token={token} ticketsOnly onAuth={()=>requestAuth('tickets')} onCancelled={()=>{setScreen('main');setTab('orders')}} onTickets={()=>{}}/>}
       {screen==='auth'&&<Account forceAuth token={token} user={user} onLogin={setLogin} onLogout={logout}/>}
+      {isHome&&<Pressable accessibilityRole="button" accessibilityLabel="Mở CineHunt AI" onPress={()=>setChatOpen(true)}
+        style={{position:'absolute',right:17,bottom:16,zIndex:30,width:56,height:56,borderRadius:28,
+          backgroundColor:C.purple,borderWidth:2,borderColor:C.lavender,alignItems:'center',justifyContent:'center',
+          shadowColor:'#000',shadowOpacity:.35,shadowOffset:{width:0,height:5},shadowRadius:12,elevation:9}}>
+        <Text style={{fontSize:29,color:C.bg,fontWeight:'900'}}>✦</Text>
+      </Pressable>}
     </View>
     {isHome&&<View style={{flexDirection:'row',backgroundColor:C.tabBg,borderTopWidth:1,borderTopColor:C.tabLine,paddingTop:8,paddingBottom:6,paddingHorizontal:9}}>
       {TABS.map(item=><Pressable key={item.id} accessibilityRole="tab" accessibilityState={{selected:tab===item.id}} onPress={()=>selectTab(item.id)} style={{flex:1,alignItems:'center',justifyContent:'center',paddingVertical:7,gap:3}}>
@@ -117,5 +125,7 @@ export default function CineHuntApp(){
         <Text numberOfLines={1} style={{fontSize:10.5,fontWeight:tab===item.id?'900':'600',color:tab===item.id?C.white:C.soft}}>{item.label}</Text>
       </Pressable>)}
     </View>}
+    <ChatAssistant key={user?.email??'guest'} visible={chatOpen&&isHome} token={token}
+      onClose={()=>setChatOpen(false)} onAuth={()=>{setChatOpen(false);requestAuth('main')}}/>
   </SafeAreaView>;
 }

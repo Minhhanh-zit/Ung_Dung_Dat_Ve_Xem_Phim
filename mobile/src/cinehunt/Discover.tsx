@@ -2,7 +2,7 @@ import {useCallback,useEffect,useMemo,useState} from 'react';
 import {Image,Linking,Pressable,ScrollView,Text,View,useWindowDimensions} from 'react-native';
 import * as Location from 'expo-location';
 import {api,errorMessage} from '../services/apiClient';
-import {Button,C,Field,FilmArt,GlowPanel,Kicker,Loader,Notice,S,SectionHeading,SimpleScroll} from './ui';
+import {Button,C,FilmArt,GlowPanel,Kicker,Loader,Notice,S,SectionHeading,SimpleScroll} from './ui'; // CINEHUNT_FLOATING_AI_V1
 import type {Movie} from '../types';
 
 type Cinema={cinemaId:number;cinemaName:string;address?:string;latitude?:number|string|null;longitude?:number|string|null;imageUrl?:string|null;bannerUrl?:string|null;photoUrl?:string|null};
@@ -17,10 +17,8 @@ export default function Discover({token,favorites,onOpen,onAuth}:Props){
   // CINEHUNT_DISCOVER_DATA_STATUS_V1: separate unavailable API from missing coordinates.
   const [cinemaFetchStatus,setCinemaFetchStatus]=useState<'idle'|'ready'|'failed'>('idle');
   const [nearby,setNearby]=useState<{id:number;km:number}[]>([]);const [geoError,setGeoError]=useState('');
-  const [query,setQuery]=useState('');const [messages,setMessages]=useState<{role:'user'|'assistant';content:string}[]>([]);
-  const [chatBusy,setChatBusy]=useState(false);const [chatError,setChatError]=useState('');
   // CINEHUNT_BETA_GPS_V1: nearby carousel and expandable city groups.
-  const [activeTool,setActiveTool]=useState<'gps'|'ai'|null>(null);
+  const [activeTool,setActiveTool]=useState<'gps'|null>(null);
   const [expandedArea,setExpandedArea]=useState<string|null>(null);
   const load=useCallback(async()=>{
     setLoading(true);setError('');setGeoError('');setNearby([]);
@@ -90,16 +88,6 @@ export default function Discover({token,favorites,onOpen,onAuth}:Props){
       setNearby(result);if(!result.length)setGeoError('Đã tải được danh sách rạp, nhưng chưa có tọa độ GPS hợp lệ. Cần bổ sung tọa độ cho rạp trong hệ thống.');
     }catch(e){setGeoError(errorMessage(e));}
   }
-  async function sendChat(){
-    if(!token||!query.trim()||chatBusy)return;
-    const next=[...messages,{role:'user' as const,content:query.trim()}].slice(-30);
-    setQuery('');setMessages(next);setChatBusy(true);setChatError('');
-    try{const r=await api<{reply:string}>('/chat',{token,method:'POST',body:{messages:next}});
-      if(!r.reply)throw new Error('Chatbot chưa trả lời');
-      setMessages([...next,{role:'assistant',content:r.reply}]);
-    }catch(e){setChatError(`${errorMessage(e)}. Chatbot có thể chưa cấu hình nhà cung cấp AI.`)}
-    finally{setChatBusy(false)}
-  }
   const orderedCinemas=useMemo(()=>cinemas.slice().sort((a,b)=>{
     const aKm=nearby.find(item=>item.id===a.cinemaId)?.km??Infinity;
     const bKm=nearby.find(item=>item.id===b.cinemaId)?.km??Infinity;
@@ -146,16 +134,6 @@ export default function Discover({token,favorites,onOpen,onAuth}:Props){
         <Text style={{fontSize:25}}>📍</Text>
         <Text style={{color:C.white,fontWeight:'800',fontSize:13,textAlign:'center'}}>Rạp gần tôi</Text>
       </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Mở trợ lý điện ảnh AI"
-        accessibilityState={{expanded:activeTool==='ai'}}
-        onPress={()=>setActiveTool(activeTool==='ai'?null:'ai')}
-        style={{flex:1,minHeight:92,borderWidth:1,borderColor:activeTool==='ai'?C.purple:C.stroke,backgroundColor:activeTool==='ai'?C.panel2:C.panel,borderRadius:19,paddingVertical:14,paddingHorizontal:10,alignItems:'center',justifyContent:'center',gap:7}}
-      >
-        <Text style={{fontSize:27,color:C.purple}}>✦</Text>
-        <Text style={{color:C.white,fontWeight:'800',fontSize:13,textAlign:'center'}}>Trợ lý AI</Text>
-      </Pressable>
     </View>
     {activeTool==='gps'&&<View style={{marginBottom:16}}>
       <SectionHeading title="Rạp gần bạn" subtitle="Danh sách rạp CineHunt lấy từ hệ thống"/>
@@ -195,14 +173,6 @@ export default function Discover({token,favorites,onOpen,onAuth}:Props){
           </Pressable>)}
         </View>}
       </View>)}
-    </View>}
-    {activeTool==='ai'&&<View style={{marginBottom:16}}>
-    <SectionHeading title="Trợ lý điện ảnh AI" subtitle="Trò chuyện để khám phá phim hợp gu"/>
-    <GlowPanel from="#31275D" to="#142B47" style={{marginBottom:15}}><View style={{flexDirection:'row',gap:12,alignItems:'center'}}><Text style={{fontSize:30,color:C.lavender}}>✧</Text><View style={{flex:1}}><Text style={{color:C.hero,fontWeight:'900',fontSize:18}}>CineHunt Assistant</Text><Text style={{color:'#C9D4EF',fontSize:12,marginTop:5}}>Trả lời theo dữ liệu thật khi dịch vụ AI sẵn sàng.</Text></View></View></GlowPanel>
-    {messages.map((m,i)=><View key={i} style={{backgroundColor:m.role==='assistant'?C.assistBg:C.panel,borderWidth:1,borderColor:m.role==='assistant'?C.assistLine:C.stroke,borderRadius:18,padding:15,marginBottom:10,marginLeft:m.role==='user'?26:0,marginRight:m.role==='assistant'?26:0}}><Kicker color={m.role==='assistant'?C.purple:C.cyan}>{m.role==='assistant'?'✦  CINEHUNT AI':'BẠN'}</Kicker><Text style={{color:C.white,marginTop:8,lineHeight:22,fontSize:14}}>{m.content}</Text></View>)}
-    {token?<><Field label="Nhắn cho CineHunt AI" value={query} onChangeText={setQuery} placeholder="Gợi ý phim vui cho tối nay..."/><Button title={chatBusy?'Đang trả lời...':'Gửi tin nhắn  →'} disabled={chatBusy||!query.trim()} onPress={()=>void sendChat()}/></>:<Button title="Đăng nhập để trò chuyện" onPress={onAuth}/>}
-    {!!chatError&&<Notice text={chatError} bad/>}
-    <Text style={[S.muted,{fontSize:11,marginTop:10}]}>AI có thể tạm không khả dụng khi nhà cung cấp giới hạn truy cập. Ứng dụng không tự đặt vé hoặc thanh toán nếu chưa xác nhận.</Text>
     </View>}
     <SectionHeading title="Gợi ý dành cho bạn" subtitle={fallback?'Phim nổi bật đang được yêu thích':'Gợi ý từ dữ liệu phim CineHunt'}/>
     {!token?<Button title="Đăng nhập để nhận gợi ý" onPress={onAuth}/>:<>
