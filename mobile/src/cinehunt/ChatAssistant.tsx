@@ -1,6 +1,7 @@
 // CINEHUNT_FLOATING_AI_V1: Shared assistant for main CineHunt tabs.
 import {useRef,useState} from 'react';
 import {KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,Text,TextInput,View} from 'react-native';
+import type {ScrollViewInstance} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {api,errorMessage} from '../services/apiClient';
 import {C} from './ui';
@@ -15,7 +16,7 @@ export default function ChatAssistant({visible,token,onClose,onAuth}:Props){
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
   const sending=useRef(false);
-  const scroll=useRef<ScrollView|null>(null);
+  const scroll=useRef<ScrollViewInstance|null>(null);
 
   async function deliver(conversation:ChatMessage[]){
     if(sending.current||!token)return;
@@ -31,7 +32,7 @@ export default function ChatAssistant({visible,token,onClose,onAuth}:Props){
       if(!response||typeof response.reply!=='string'||!response.reply.trim()){
         throw new Error('Trợ lý chưa có phản hồi. Bạn có thể thử lại.');
       }
-      setMessages([...conversation,{role:'assistant',content:response.reply}].slice(-30));
+      setMessages([...conversation,{role:'assistant' as const,content:response.reply}].slice(-30));
     }catch(e){
       setError(`${errorMessage(e)} Bạn có thể gửi lại mà không mất hội thoại.`);
     }finally{
