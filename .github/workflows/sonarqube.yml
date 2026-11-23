@@ -1,4 +1,5 @@
 name: CineHunt SonarQube Cloud
+# Actions pinned to verified full commit SHAs to prevent mutable-tag drift.
 
 on:
   push:
@@ -23,18 +24,18 @@ jobs:
       id-token: write
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
 
       - name: Authenticate to SonarQube Cloud with OIDC
         id: auth
-        uses: SonarSource/sonarqube-auth-action@v1
+        uses: SonarSource/sonarqube-auth-action@a0aa643acde4162396015b4f12536c1b9c4aab82
         with:
           project-key: Minhhanh-zit_Ung_Dung_Dat_Ve_Xem_Phim
 
       - name: Run SonarQube analysis
-        uses: SonarSource/sonarqube-scan-action@v8
+        uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4
         with:
           args: >
             -Dsonar.organization=${{ steps.auth.outputs.organization }}
