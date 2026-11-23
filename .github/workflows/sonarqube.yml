@@ -12,12 +12,112 @@ permissions:
   contents: read
 
 jobs:
+  backend-coverage:
+    name: Backend LCOV
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install Backend dependencies
+        run: npm ci
+      - name: Run existing Node tests with native LCOV reporter
+        run: |
+          mkdir -p coverage
+          TS_NODE_PROJECT=test/tsconfig.json node --enable-source-maps \
+            --test --require ts-node/register --experimental-test-coverage \
+            --test-reporter=spec --test-reporter=lcov \
+            --test-reporter-destination=stdout \
+            --test-reporter-destination=coverage/lcov.info \
+            test/*.test.ts
+      - name: Verify production source coverage and normalize paths
+        run: cd .. && python3 scripts/normalize-sonar-lcov.py backend/coverage/lcov.info backend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cinehunt-backend-lcov
+          path: backend/coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 14
+
+  web-coverage:
+    name: Admin Web LCOV
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: admin-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: admin-web/package-lock.json
+      - name: Install Web dependencies
+        run: npm ci
+      - name: Run Vitest V8 coverage
+        run: npm run test:coverage -- --coverage.include='src/**/*.{ts,tsx}' --coverage.reporter=lcov --coverage.reporter=text-summary
+      - name: Verify production source coverage and normalize paths
+        run: cd .. && python3 scripts/normalize-sonar-lcov.py admin-web/coverage/lcov.info admin-web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cinehunt-web-lcov
+          path: admin-web/coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 14
+
+  ai-coverage:
+    name: AI Python Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ai/requirements.txt
+      - name: Install AI dependencies and coverage
+        run: |
+          python -m pip install -r ai/requirements.txt
+          python -m pip install coverage==7.13.3
+      - name: Run existing AI smoke tests with coverage
+        run: |
+          python -m coverage run --source=ai ai/smoke_test.py
+          python -m coverage xml -o ai/coverage.xml
+      - name: Verify XML maps to actual AI source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          report = Path("ai/coverage.xml")
+          root = ET.parse(report).getroot()
+          sources = [x.get("filename", "") for x in root.iter("class")]
+          assert any(s.startswith("ai/app/") and Path(s).is_file() for s in sources), sources
+          print("Validated AI coverage XML:", [s for s in sources if s.startswith("ai/app/")])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cinehunt-ai-coverage
+          path: ai/coverage.xml
+          if-no-files-found: error
+          retention-days: 14
+
   sonarqube:
-    name: SonarQube Analysis
+    name: SonarQube Analysis + Quality Gate
+    needs: [backend-coverage, web-coverage, ai-coverage]
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       id-token: write
@@ -26,14 +126,29 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
+      - uses: actions/download-artifact@v4
+        with:
+          name: cinehunt-backend-lcov
+          path: backend/coverage
+      - uses: actions/download-artifact@v4
+        with:
+          name: cinehunt-web-lcov
+          path: admin-web/coverage
+      - uses: actions/download-artifact@v4
+        with:
+          name: cinehunt-ai-coverage
+          path: ai
+      - name: Verify coverage reports exist
+        run: |
+          test -s backend/coverage/lcov.info
+          test -s admin-web/coverage/lcov.info
+          test -s ai/coverage.xml
       - name: Authenticate to SonarQube Cloud with OIDC
         id: auth
         uses: SonarSource/sonarqube-auth-action@v1
         with:
           project-key: Minhhanh-zit_Ung_Dung_Dat_Ve_Xem_Phim
-
-      - name: Run SonarQube analysis
+      - name: Scan sources, import coverage, and wait for Quality Gate
         uses: SonarSource/sonarqube-scan-action@v8
         with:
           args: >
