@@ -146,6 +146,27 @@ jobs:
           test -s backend/coverage/lcov.info
           test -s admin-web/coverage/lcov.info
           test -s ai/coverage.xml
+      # Sonar TypeScript analyzer resolves Expo, Nest and Vite inherited
+      # tsconfig files from node_modules. Coverage artifacts alone do not
+      # contain those dependencies.
+      - name: Set up Node.js 22 for Backend and Mobile analysis
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Restore Backend TypeScript dependencies for analysis
+        working-directory: backend
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Restore Mobile Expo tsconfig dependencies for analysis
+        working-directory: mobile
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Set up Node.js 24 for Admin Web analysis
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Restore Admin Web TypeScript dependencies for analysis
+        working-directory: admin-web
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
       - name: Authenticate to SonarQube Cloud with OIDC
         id: auth
         uses: SonarSource/sonarqube-auth-action@a0aa643acde4162396015b4f12536c1b9c4aab82
