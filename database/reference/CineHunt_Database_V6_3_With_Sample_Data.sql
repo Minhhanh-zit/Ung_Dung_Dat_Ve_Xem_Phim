@@ -1973,72 +1973,13 @@ BEGIN
 END;
 GO
 
--- ADMIN
-/* TẠO TÀI KHOẢN ADMIN NAMCUA */
-
-IF NOT EXISTS (
-    SELECT 1
-    FROM dbo.roles
-    WHERE role_code = 'ADMIN'
-)
-BEGIN
-    THROW 50001, N'Không tìm thấy quyền ADMIN trong bảng roles.', 1;
-END;
-
-IF NOT EXISTS (
-    SELECT 1
-    FROM dbo.users
-    WHERE email = 'namcua@cinehunt.local'
-)
-BEGIN
-    INSERT INTO dbo.users (
-        full_name,
-        email,
-        phone,
-        password_hash,
-        email_verified,
-        role,
-        status
-    )
-    VALUES (
-        N'namcua',
-        'namcua@cinehunt.local',
-        NULL,
-        '$2b$12$I/kU6DQ4k57CEl9.0Jj/tuJcLcp53BjL8XmC.XNihJvWJ9SNiTgKC',
-        1,
-        'ADMIN',
-        'ACTIVE'
-    );
-END
-ELSE
-BEGIN
-    UPDATE dbo.users
-    SET
-        full_name = N'namcua',
-        role = 'ADMIN',
-        status = 'ACTIVE',
-        email_verified = 1,
-        updated_at = SYSDATETIME()
-    WHERE email = 'namcua@cinehunt.local';
-END;
-
-INSERT INTO dbo.user_roles (
-    user_id,
-    role_id
-)
-SELECT
-    u.user_id,
-    r.role_id
-FROM dbo.users AS u
-CROSS JOIN dbo.roles AS r
-WHERE u.email = 'namcua@cinehunt.local'
-  AND r.role_code = 'ADMIN'
-  AND NOT EXISTS (
-      SELECT 1
-      FROM dbo.user_roles AS ur
-      WHERE ur.user_id = u.user_id
-        AND ur.role_id = r.role_id
-  );
+-- ADMIN (SECURITY HARDENING)
+-- This reference SQL intentionally does NOT create or reactivate administrator
+-- accounts with a committed password hash. The prior demo credential was removed.
+-- Provision a privileged account only through an explicitly authorized,
+-- audited operation, e.g. backend/scripts/create-admin.cjs with a strong,
+-- unique ADMIN_PASSWORD supplied outside Git. Never run this on shared DB by default.
+-- Rotate any existing ADMIN account that was initialized using the old seed.
 
 -- Kiểm tra kết quả
 SELECT

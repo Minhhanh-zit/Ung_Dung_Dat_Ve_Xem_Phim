@@ -1,4 +1,5 @@
 name: CineHunt Auto Test
+# Actions pinned to verified full commit SHAs to prevent mutable-tag drift.
 on:
   push:
     branches: [main]
@@ -11,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     defaults: {run: {working-directory: backend}}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: {node-version: '22', cache: npm, cache-dependency-path: backend/package-lock.json}
       - run: npm ci --no-audit --no-fund
       - run: ./node_modules/.bin/tsc --noEmit --incremental false
@@ -23,8 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     defaults: {run: {working-directory: mobile}}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: {node-version: '22', cache: npm, cache-dependency-path: mobile/package-lock.json}
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
@@ -34,15 +35,15 @@ jobs:
     runs-on: ubuntu-latest
     defaults: {run: {working-directory: admin-web}}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: {node-version: '22', cache: npm, cache-dependency-path: admin-web/package-lock.json}
       - run: npm ci --no-audit --no-fund
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
-      - run: npx playwright test --config playwright.smoke.config.ts
+      - run: ./node_modules/.bin/playwright install --with-deps chromium
+      - run: ./node_modules/.bin/playwright test --config playwright.smoke.config.ts
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: cinehunt-playwright-report
           path: admin-web/playwright-report-smoke/

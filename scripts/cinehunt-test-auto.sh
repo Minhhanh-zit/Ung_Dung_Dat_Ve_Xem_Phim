@@ -4,7 +4,7 @@ set -u
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${1:---quick}"
 case "$MODE" in --quick|--ui|--api|--all) ;; *) echo 'Usage: bash scripts/cinehunt-test-auto.sh [--quick|--ui|--api|--all]'; exit 2;; esac
-if [ -x /opt/homebrew/opt/node@22/bin/node ]; then
+if [[ -x /opt/homebrew/opt/node@22/bin/node ]]; then
   export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
 fi
 REPORT_PARENT="${CINEHUNT_REPORT_DIR:-$HOME/Projects/Cinehunt-Test-Reports}"
@@ -20,7 +20,7 @@ run(){
   printf '\n===== %s =====\n' "$name"
   (cd "$ROOT/$dir" && "$@") > "$logfile" 2>&1
   exitcode=$?
-  if [ "$exitcode" -eq 0 ]; then
+  if [[ "$exitcode" -eq 0 ]]; then
     printf 'PASS %s\n' "$name"
     printf '| %s | PASS |\n' "$name" >> "$SUMMARY"
   else
@@ -30,7 +30,7 @@ run(){
     FAIL=$((FAIL+1))
   fi
 }
-if [ "$MODE" = '--quick' ] || [ "$MODE" = '--all' ]; then
+if [[ "$MODE" = '--quick' ]] || [[ "$MODE" = '--all' ]]; then
   run 'Git diff' '.' git diff --check
   run 'Backend typecheck' backend ./node_modules/.bin/tsc --noEmit --incremental false
   run 'Backend tests' backend npm test
@@ -41,15 +41,15 @@ if [ "$MODE" = '--quick' ] || [ "$MODE" = '--all' ]; then
   run 'Mobile lint' mobile npm run lint:active
   run 'Mobile tests' mobile npm test
 fi
-if [ "$MODE" = '--ui' ] || [ "$MODE" = '--all' ]; then
+if [[ "$MODE" = '--ui' ]] || [[ "$MODE" = '--all' ]]; then
   run 'Playwright Chromium' admin-web ./node_modules/.bin/playwright test --config playwright.smoke.config.ts
 fi
-if [ "$MODE" = '--api' ] || [ "$MODE" = '--all' ]; then
+if [[ "$MODE" = '--api' ]] || [[ "$MODE" = '--all' ]]; then
   run 'API read-only integration' '.' node scripts/cinehunt-api-smoke.cjs
   run 'API anonymous security read-only' '.' node scripts/cinehunt-authz-readonly-smoke.cjs
 fi
 printf '\nReport: %s\n' "$SUMMARY"
-if [ "$FAIL" -gt 0 ]; then
+if [[ "$FAIL" -gt 0 ]]; then
   printf '\nRESULT=FAIL (%s checks)\n' "$FAIL"; exit 1
 fi
 printf '\nRESULT=PASS\n'; exit 0
