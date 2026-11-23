@@ -8,7 +8,6 @@ type Props={token:string|null;user:User|null;showtime:Showtime;onAuth:()=>void;o
 export default function SeatFlow({token,user,showtime,onAuth,onBooking}:Props){
   const [map,setMap]=useState<SeatMap|null>(null);
   const [holds,setHolds]=useState<Hold[]>([]);
-  const [selected,setSelected]=useState<number[]>([]);
   const [existing,setExisting]=useState<Booking|null>(null);
   const [loading,setLoading]=useState(false);
   const [verified,setVerified]=useState(false);
@@ -19,13 +18,14 @@ export default function SeatFlow({token,user,showtime,onAuth,onBooking}:Props){
   const [quantities,setQuantities]=useState<Record<number,number>>({});
   const [voucher,setVoucher]=useState('');
   const [now,setNow]=useState<number|null>(null);
+  const [entryStartedAt,setEntryStartedAt]=useState<number|null>(null);
   const inFlight=useRef(false);
   const bookingKey=useRef<string|null>(null);
   const uncertain=useRef(false);
   const [uncertainUI,setUncertainUI]=useState(false);
   const expiredOnce=useRef('');
   useEffect(()=>{
-    const tick=()=>setNow(Date.now());
+    const tick=()=>{const time=Date.now();setNow(time);setEntryStartedAt(old=>old??time)};
     const initial=setTimeout(tick,0);
     const interval=setInterval(tick,1000);
     return ()=>{clearTimeout(initial);clearInterval(interval)};
@@ -43,7 +43,6 @@ export default function SeatFlow({token,user,showtime,onAuth,onBooking}:Props){
       setMap(m);
       const ids=new Set(m.seats.map(s=>s.showtimeSeatId));
       setHolds(h.filter(x=>ids.has(Number(x.showtimeSeatId))&&new Date(x.expiresAt).getTime()>Date.now()));
-      setSelected([]);
       setExisting(b.find(x=>Number(x.showtimeId)===showtime.showtimeId&&x.status==='PENDING_PAYMENT'&&(!x.expiresAt||new Date(x.expiresAt).getTime()>Date.now()))??null);
       setVerified(true);
     }catch(e){setError(errorMessage(e));}finally{setLoading(false)}
@@ -58,8 +57,10 @@ export default function SeatFlow({token,user,showtime,onAuth,onBooking}:Props){
   const validHolds=now===null?holds:holds.filter(h=>new Date(h.expiresAt).getTime()>now);
   const expires=validHolds.length?Math.min(...validHolds.map(h=>new Date(h.expiresAt).getTime())):0;
   const seconds=now===null?0:expires?Math.max(0,Math.ceil((expires-now)/1000)):0;
-  const selectedItems=(map?.seats??[]).filter(s=>selected.includes(s.showtimeSeatId));
-  const total=selectedItems.reduce((a,s)=>a+Number(s.price),0);
+  // Selection timer starts on entering the screen, SQL holds only after tapping seats.
+  const browsingSeconds=now===null||entryStartedAt===null?600:Math.max(0,Math.ceil((entryStartedAt+600000-now)/1000));
+  const shownSeconds=validHolds.length?seconds:browsingSeconds;
+  const total=validHolds.reduce((sum,h)=>sum+Number(h.price??map?.seats.find(s=>s.showtimeSeatId===Number(h.showtimeSeatId))?.price??0),0);
   useEffect(()=>{
     if(now===null||!holds.length||validHolds.length)return;
     const fingerprint=holds.map(h=>h.holdId).join('/');
@@ -68,22 +69,34 @@ export default function SeatFlow({token,user,showtime,onAuth,onBooking}:Props){
     setWarning('Lượt giữ ghế đã hết hạn. Đang tải lại trạng thái từ server.');
     void load();
   },[now,holds,validHolds.length,load]);
-  function toggle(s:Seat){
-    if(!verified||busy||existing||validHolds.length||s.status!=='AVAILABLE')return;
-    setSelected(v=>v.includes(s.showtimeSeatId)?v.filter(x=>x!==s.showtimeSeatId):v.length>=8?(Alert.alert('Giới hạn','Tối đa 8 ghế.'),v):[...v,s.showtimeSeatId]);
-  }
-  async function hold(){
-    if(!token||inFlight.current||!verified||!map||existing||validHolds.length)return;
-    if(!selected.length||selected.length>8){setError('Chỉ được chọn từ 1 đến 8 ghế.');return;}
-    if(!selected.every(id=>map.seats.some(s=>s.showtimeSeatId===id&&s.status==='AVAILABLE'))){setError('Ghế không còn hợp lệ. Hãy tải lại.');return;}
+  async function toggle(s:Seat){
+    if(!token||inFlight.current||!verified||!map||existing||busy)return;
+    if(!validHolds.length && browsingSeconds===0){
+      Alert.alert('Hết thời gian chọn ghế','Hãy tải lại sơ đồ để bắt đầu phiên chọn ghế mới.');
+      return;
+    }
+    const own = validHolds.find(h=>Number(h.showtimeSeatId)===s.showtimeSeatId);
+    if(!own && s.status!=='AVAILABLE')return;
+    if(!own && validHolds.length>=8){Alert.alert('Giới hạn','Tối đa 8 ghế.');return;}
     inFlight.current=true;setBusy(true);setError('');setWarning('');
     try{
-      const r=await api<Hold[]>('/showtime-seats/hold-many',{method:'POST',token,body:{showtimeSeatIds:selected,holdMinutes:5},timeout:18000});
-      if(!Array.isArray(r)||r.length!==selected.length)throw new Error('Phản hồi giữ ghế chưa được xác nhận.');
-      setHolds(r);setSelected([]);
+      if(own){
+        await api(`/showtime-seats/release/${encodeURIComponent(String(own.holdId))}`,{token,method:'POST'});
+      }else{
+        const r=await api<Hold>('/showtime-seats/hold',{
+          method:'POST',token,
+          body:{showtimeSeatId:s.showtimeSeatId,holdMinutes:10},
+          timeout:18000,
+        });
+        if(!r.holdId || Number(r.showtimeSeatId)!==s.showtimeSeatId)throw new Error('Chưa xác minh được lượt giữ ghế');
+      }
       await load();
-    }catch(e){setWarning('Nếu mất mạng, request giữ ghế có thể đã thành công. Không bấm lại ngay.');setError(errorMessage(e));await load();}
-    finally{inFlight.current=false;setBusy(false)}
+    }catch(e){
+      const message=errorMessage(e);
+      await load();
+      setError(message);
+      setWarning('Có thể máy chủ đã xử lý nhưng kết nối bị gián đoạn. Đã tải lại trạng thái ghế, hãy kiểm tra trước khi chạm tiếp.');
+    }finally{inFlight.current=false;setBusy(false)}
   }
   async function release(){
     if(!token||inFlight.current||!validHolds.length)return;
@@ -121,6 +134,10 @@ export default function SeatFlow({token,user,showtime,onAuth,onBooking}:Props){
   return <SimpleScroll>
     <View style={{marginTop:7}}><Kicker>YOUR CINEMA EXPERIENCE</Kicker><Text style={[S.title,{marginTop:8}]}>Chọn ghế ngồi</Text><Text style={[S.muted,{marginTop:7}]}>Suất #{showtime.showtimeId}  •  {formatDate(showtime.startTime)}</Text></View>
     <GlowPanel from="#3B2866" to="#0D3041" style={{marginTop:20,marginBottom:13}}><Kicker color={C.lavender}>RẠP CHIẾU</Kicker><Text style={{fontSize:20,color:C.hero,fontWeight:'900',marginTop:8}}>{map?.cinemaName||showtime.room?.cinema?.cinemaName||'CineHunt Cinema'}</Text><Text style={{color:'#D2D3E8',marginTop:7,fontSize:12}}>Phòng {map?.roomName||showtime.room?.roomName||'Đang tải'}  •  {map?.totalSeats??'—'} ghế</Text></GlowPanel>
+    <View style={{padding:12,marginBottom:10,borderRadius:14,backgroundColor:C.panel,borderWidth:1,borderColor:C.stroke}}>
+      <Text style={{color:C.white,fontWeight:'900',fontSize:17}}>◷  Thời gian còn lại: {Math.floor(shownSeconds/60)}:{String(shownSeconds%60).padStart(2,'0')}</Text>
+      <Text style={{color:C.muted,fontSize:11,marginTop:5}}>{validHolds.length?'Ghế của bạn đã được giữ trên SQL Server.':'Bạn có 10 phút chọn ghế. Hệ thống sẽ tự giữ ghế 10 phút kể từ khi bạn chạm; chỉ xem sơ đồ sẽ không chiếm ghế.'}</Text>
+    </View>
     {loading&&<Loader/>}{!!error&&<Notice text={error} bad/>}{!!warning&&<Notice text={warning} bad/>}
     {existing&&<View style={S.card}><Text style={S.h2}>Bạn đã có đơn chờ thanh toán</Text><Text style={[S.muted,{marginVertical:9}]}>{existing.bookingCode}</Text><Button title="Mở đơn đã tạo  →" onPress={()=>onBooking(String(existing.bookingId))}/></View>}
     {map&&<>
@@ -130,23 +147,22 @@ export default function SeatFlow({token,user,showtime,onAuth,onBooking}:Props){
           <Text style={{color:C.soft,fontSize:12,fontWeight:'900',width:21,textAlign:'center'}}>{name}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:5,paddingRight:7}}>
             {seats.map(s=>{
-              const active=selected.includes(s.showtimeSeatId);
               const heldByMe=validHolds.some(h=>Number(h.showtimeSeatId)===s.showtimeSeatId);
               const available=s.status==='AVAILABLE';
-              const seatColor=active?C.purple:heldByMe?C.cyan:available?C.seatFree:s.status==='BLOCKED'?C.seatBlocked:C.seatOff;
-              return <Pressable key={s.showtimeSeatId} disabled={!available||!!existing||validHolds.length>0||!verified||busy} onPress={()=>toggle(s)} accessibilityRole="button" accessibilityLabel={`Ghế ${s.seatLabel}, ${s.status}`} style={{width:35,height:36,backgroundColor:seatColor,borderWidth:1,borderColor:active?C.lavender:heldByMe?C.cyan:available?C.okLine:C.stroke,borderRadius:10,alignItems:'center',justifyContent:'center'}}><Text style={{color:active?C.bg:heldByMe?C.bg:available?C.okText:C.muted,fontWeight:'900',fontSize:11}}>{s.seatNumber??s.seatLabel}</Text></Pressable>;
+              const seatColor=heldByMe?C.cyan:available?C.seatFree:s.status==='BLOCKED'?C.seatBlocked:C.seatOff;
+              return <Pressable key={s.showtimeSeatId} disabled={(!available&&!heldByMe)||!!existing||!verified||busy} onPress={()=>void toggle(s)} accessibilityRole="button" accessibilityLabel={`Ghế ${s.seatLabel}, ${s.status}`} style={{width:35,height:36,backgroundColor:seatColor,borderWidth:1,borderColor:heldByMe?C.cyan:available?C.okLine:C.stroke,borderRadius:10,alignItems:'center',justifyContent:'center'}}><Text style={{color:heldByMe?C.bg:available?C.okText:C.muted,fontWeight:'900',fontSize:11}}>{s.seatNumber??s.seatLabel}</Text></Pressable>;
             })}
           </ScrollView>
         </View>)}
         {!map.seatsGenerated&&<Notice text="Suất chiếu này chưa tạo sơ đồ ghế." bad/>}
         <View style={{flexDirection:'row',flexWrap:'wrap',gap:12,marginTop:20,justifyContent:'center'}}>
-          {([[C.seatFree,'Trống'],[C.purple,'Đang chọn'],[C.cyan,'Đã giữ'],[C.seatOff,'Không khả dụng']] as const).map(([color,label])=><View key={label} style={{flexDirection:'row',alignItems:'center',gap:5}}><View style={{width:10,height:10,borderRadius:3,backgroundColor:color}}/><Text style={{color:C.muted,fontSize:10}}>{label}</Text></View>)}
+          {([[C.seatFree,'Trống'],[C.cyan,'Bạn đang giữ'],[C.seatOff,'Không khả dụng']] as const).map(([color,label])=><View key={label} style={{flexDirection:'row',alignItems:'center',gap:5}}><View style={{width:10,height:10,borderRadius:3,backgroundColor:color}}/><Text style={{color:C.muted,fontSize:10}}>{label}</Text></View>)}
         </View>
       </View>
       <GlowPanel from="#2B285C" to="#103242" style={{marginBottom:16}}>
         <Kicker color={C.lavender}>ĐƠN ĐẶT VÉ</Kicker>
-        <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:8}}><Text style={{color:C.hero,fontSize:15,fontWeight:'700'}}>Đang chọn {selected.length}/8 ghế</Text><Text style={{color:C.heroGreen,fontSize:23,fontWeight:'900'}}>{formatMoney(total)}</Text></View>
-        <Text style={{color:'#CACDE6',fontSize:11,marginTop:9}}>Chạm chọn ghế chưa đồng nghĩa với giữ ghế. Giá cuối cùng do Backend tính.</Text>
+        <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:8}}><Text style={{color:C.hero,fontSize:15,fontWeight:'700'}}>Đang giữ {validHolds.length}/8 ghế</Text><Text style={{color:C.heroGreen,fontSize:23,fontWeight:'900'}}>{formatMoney(total)}</Text></View>
+        <Text style={{color:'#CACDE6',fontSize:11,marginTop:9}}>Chạm ghế trống để tự giữ 10 phút trên SQL Server. Chạm lại ghế mình đang giữ để bỏ chọn. Giá do Backend tính.</Text>
       </GlowPanel>
       {!!validHolds.length&&<View style={S.card}>
         <Kicker color={C.green}>✓  GIỮ GHẾ THÀNH CÔNG</Kicker>
@@ -154,7 +170,7 @@ export default function SeatFlow({token,user,showtime,onAuth,onBooking}:Props){
         <Text style={{color:C.cyan,fontSize:29,fontWeight:'900',marginTop:12,marginBottom:13}}>◷  {Math.floor(seconds/60)}:{String(seconds%60).padStart(2,'0')}</Text>
         <Button title="Nhả các ghế đang giữ" kind="outline" disabled={busy} onPress={()=>Alert.alert('Nhả ghế?','Nhả toàn bộ lượt giữ hiện tại?', [{text:'Không',style:'cancel'},{text:'Nhả ghế',style:'destructive',onPress:()=>void release()}])}/>
       </View>}
-      {!existing&&<Button title={busy?'Đang xử lý...':`Giữ ${selected.length} ghế trong 5 phút  →`} disabled={!verified||busy||selected.length===0||validHolds.length>0||uncertainUI} onPress={()=>Alert.alert('Xác nhận giữ ghế',`Giữ ${selected.length} ghế trong 5 phút trên SQL Server?`,[{text:'Quay lại',style:'cancel'},{text:'Giữ ghế',onPress:()=>void hold()}])}/>}
+      {!existing&&!validHolds.length&&<Notice text="Chạm một ghế trống để bắt đầu giữ tự động 10 phút. Đồng hồ bắt đầu khi server xác nhận giữ ghế, không phải khi mở sơ đồ."/>}
       {!existing&&validHolds.length>0&&<>
         <SectionHeading title="Bắp nước & ưu đãi" subtitle="Thêm combo cho trải nghiệm trọn vẹn"/>
         <View style={S.card}>
@@ -167,7 +183,7 @@ export default function SeatFlow({token,user,showtime,onAuth,onBooking}:Props){
         </View>
         <Button title="Tiếp tục tạo đơn chờ thanh toán  →" disabled={!verified||busy||uncertainUI} onPress={()=>Alert.alert('Xác nhận đặt vé',`Chuyển ${validHolds.length} ghế đang giữ thành đơn chờ thanh toán?`,[{text:'Không',style:'cancel'},{text:'Tạo đơn',onPress:()=>void makeBooking()}])}/>
       </>}
-      <View style={{marginTop:12}}><Button title="↻  Làm mới sơ đồ và trạng thái ghế" kind="outline" disabled={busy||loading} onPress={()=>void load()}/></View>
+      <View style={{marginTop:12}}><Button title="↻  Làm mới sơ đồ và trạng thái ghế" kind="outline" disabled={busy||loading} onPress={()=>{setEntryStartedAt(Date.now());void load()}}/></View>
     </>}
   </SimpleScroll>;
 }

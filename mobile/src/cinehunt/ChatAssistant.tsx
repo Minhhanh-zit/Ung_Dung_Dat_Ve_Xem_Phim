@@ -1,12 +1,30 @@
 // CINEHUNT_FLOATING_AI_V1: Shared assistant for main CineHunt tabs.
 import {useRef,useState} from 'react';
-import {KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,Text,TextInput,View} from 'react-native';
+import {KeyboardAvoidingView,Linking,Modal,Platform,Pressable,ScrollView,Text,TextInput,View} from 'react-native';
+import * as Location from 'expo-location';
 import type {ScrollViewInstance} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {api,errorMessage} from '../services/apiClient';
 import {C} from './ui';
 
-type ChatMessage={role:'user'|'assistant';content:string};
+type ChatLink={label:string;url:string};
+type ChatMessage={role:'user'|'assistant';content:string;routeLinks?:ChatLink[]};
+type NearbyCinema={cinemaId:number;cinemaName:string;address:string|null;ward:string;distanceKm:number|null;durationMinutes:number|null;mapsUrl:string};
+type NearbyResult={method:'DRIVING'|'STRAIGHT_LINE'|'UNRANKED';note:string;cinemas:NearbyCinema[]};
+const plain=(s:string)=>s.toLocaleLowerCase('vi-VN').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d');
+function asksForNearestCinema(s:string){
+  const t=plain(s);
+  return /\b(rap|cinema)\b/.test(t)&&/\b(gan|quanh|lan can|nearest)\b/.test(t);
+}
+function namedOrigin(s:string):string|null{
+  const t=plain(s);
+  // Known place queries are NOT equivalent to current phone GPS.
+  if(t.includes('tan mai'))return 'Khu vực Tân Mai, Hoàng Mai, Hà Nội, Việt Nam';
+  if(t.includes('thanh xuan'))return 'Phường Thanh Xuân, Hà Nội, Việt Nam';
+  if(t.includes('ha dong'))return 'Phường Hà Đông, Hà Nội, Việt Nam';
+  if(t.includes('cau giay'))return 'Phường Cầu Giấy, Hà Nội, Việt Nam';
+  return null;
+}
 type Props={visible:boolean;token:string|null;onClose:()=>void;onAuth:()=>void};
 
 export default function ChatAssistant({visible,token,onClose,onAuth}:Props){
@@ -25,6 +43,38 @@ export default function ChatAssistant({visible,token,onClose,onAuth}:Props){
     setError('');
     try{
       // DTO accepts at most 30 messages and 4000 characters per message.
+      const question=conversation.at(-1)?.content??'';
+      if(asksForNearestCinema(question)){
+        const origin=namedOrigin(question);
+        let body: Record<string,unknown>;
+        if(origin){
+          body={originAddress:origin};
+        }else{
+          const permission=await Location.requestForegroundPermissionsAsync();
+          if(permission.status!=='granted')throw new Error('Cần cho phép vị trí để tìm rạp gần bạn.');
+          const gps=await Location.getCurrentPositionAsync({accuracy:Location.Accuracy.Balanced});
+          body={latitude:gps.coords.latitude,longitude:gps.coords.longitude};
+        }
+        const result=await api<NearbyResult>('/cinemas/nearest',{
+          token,method:'POST',body,timeout:25000,
+        });
+        const rows=result.cinemas??[];
+        const details=rows.map((c,i)=>{
+          const km=c.distanceKm==null?'':` · ${c.distanceKm.toLocaleString('vi-VN')} km`;
+          const duration=c.durationMinutes!=null?` · ${c.durationMinutes} phút`:'';
+          return `${i+1}. ${c.cinemaName} (${c.ward})${km}${duration}`;
+        });
+        const title=result.method==='DRIVING'?'🚗 Gần nhất theo đường đi ô tô:':
+          result.method==='STRAIGHT_LINE'?'📍 Gần theo GPS (đường thẳng, chỉ ước tính):':
+          '📍 Ba rạp trong CineHunt:';
+        const reply=[title,...details,result.note,
+          'Nhấn “Chỉ đường” bên dưới để Google Maps hiển thị km đường thực tế.'].join('\n');
+        setMessages([...conversation,{
+          role:'assistant' as const,content:reply,
+          routeLinks:rows.map((c)=>({label:`Chỉ đường · ${c.cinemaName}`,url:c.mapsUrl})),
+        }].slice(-30));
+        return;
+      }
       const payload=conversation.slice(-24).map(m=>({role:m.role,content:m.content.slice(0,4000)}));
       const response=await api<{reply:string}>('/chat',{
         token,method:'POST',body:{messages:payload},timeout:30000,
@@ -78,6 +128,11 @@ export default function ChatAssistant({visible,token,onClose,onAuth}:Props){
         <ScrollView ref={scroll} style={{flex:1}} keyboardShouldPersistTaps="handled"
           contentContainerStyle={{padding:15,paddingBottom:20,flexGrow:1}}
           onContentSizeChange={()=>scroll.current?.scrollToEnd({animated:true})}>
+          {token&&messages.length===0&&<Pressable accessibilityRole="button"
+            onPress={()=>void deliver([{role:'user',content:'Tìm rạp gần tôi'}])}
+            style={{alignSelf:'flex-start',padding:11,marginBottom:10,borderRadius:11,backgroundColor:C.panel}}>
+            <Text style={{color:C.purple,fontWeight:'800'}}>📍 Tìm rạp gần tôi</Text>
+          </Pressable>}
           {messages.length===0&&<View style={{backgroundColor:C.panel,borderRadius:17,padding:15,borderWidth:1,borderColor:C.stroke}}>
             <Text style={{color:C.white,fontWeight:'800',fontSize:14}}>✦  Chào bạn, CineHunt AI đây!</Text>
             <Text style={{color:C.muted,lineHeight:21,marginTop:8}}>Bạn muốn tìm phim hay, chọn rạp hay hỏi lịch chiếu hôm nay?</Text>
@@ -88,6 +143,11 @@ export default function ChatAssistant({visible,token,onClose,onAuth}:Props){
             <Text style={{fontSize:10,fontWeight:'900',marginBottom:6,color:m.role==='user'?C.bg:C.cyan}}>
               {m.role==='user'?'BẠN':'✦  CINEHUNT AI'}</Text>
             <Text style={{color:m.role==='user'?C.bg:C.white,fontSize:14,lineHeight:21}}>{m.content}</Text>
+            {m.routeLinks?.map((link,j)=><Pressable key={j} accessibilityRole="link"
+              onPress={()=>{if(link.url.startsWith('https://www.google.com/maps/dir/?api=1'))void Linking.openURL(link.url)}}
+              style={{marginTop:10,paddingVertical:9,borderRadius:10,backgroundColor:C.bg,paddingHorizontal:10}}>
+              <Text style={{fontWeight:'800',color:C.purple}}>{link.label} ↗</Text>
+            </Pressable>)}
           </View>)}
           {busy&&<Text style={{color:C.purple,marginTop:13,fontSize:12}}>✦  Đang trả lời...</Text>}
           {!!error&&<View style={{marginTop:12,backgroundColor:C.panel,borderRadius:13,padding:12}}>

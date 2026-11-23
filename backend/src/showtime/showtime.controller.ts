@@ -37,6 +37,14 @@ export class ShowtimeController {
     return this.showtimeService.findByRoom(roomId);
   }
 
+  // Must be declared before the parameterized :id route.
+  @Get('admin/all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  findAllForAdmin() {
+    return this.showtimeService.findAllForAdmin();
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.showtimeService.findOne(id);

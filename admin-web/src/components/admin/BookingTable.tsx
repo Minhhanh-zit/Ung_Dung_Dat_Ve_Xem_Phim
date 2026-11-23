@@ -5,9 +5,10 @@ import type { AdminBooking } from '../../types/admin';
 
 interface Props {
   bookings: AdminBooking[];
+  onConfirmBank?: (booking: AdminBooking) => void;
 }
 
-const BookingTable: React.FC<Props> = ({ bookings }) => (
+const BookingTable: React.FC<Props> = ({ bookings, onConfirmBank }) => (
   <>
     <div className="hidden md:block">
       <TableShell>
@@ -21,6 +22,7 @@ const BookingTable: React.FC<Props> = ({ bookings }) => (
               <Th>Ghế</Th>
               <Th>Tổng tiền</Th>
               <Th>Thanh toán</Th>
+              <Th>Đối soát</Th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">
@@ -34,6 +36,14 @@ const BookingTable: React.FC<Props> = ({ bookings }) => (
                 <Td className="text-yellow-400 whitespace-nowrap">{formatVnd(b.totalAmount)}</Td>
                 <Td>
                   <BookingStatusBadge status={b.paymentStatus} />
+                </Td>
+                <Td>
+                  {b.status === 'PENDING_PAYMENT' && b.paymentStatus === 'PENDING' && onConfirmBank && (
+                    <button type="button" onClick={() => onConfirmBank(b)}
+                      className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-bold text-white hover:bg-blue-600">
+                      Kiểm tra chuyển khoản
+                    </button>
+                  )}
                 </Td>
               </tr>
             ))}
@@ -63,6 +73,12 @@ const BookingTable: React.FC<Props> = ({ bookings }) => (
               </div>
             ))}
           </dl>
+          {b.status === 'PENDING_PAYMENT' && b.paymentStatus === 'PENDING' && onConfirmBank && (
+            <button type="button" onClick={() => onConfirmBank(b)}
+              className="mt-3 rounded-lg bg-blue-700 px-3 py-2 text-xs font-bold text-white">
+              Kiểm tra chuyển khoản
+            </button>
+          )}
         </div>
       ))}
     </div>

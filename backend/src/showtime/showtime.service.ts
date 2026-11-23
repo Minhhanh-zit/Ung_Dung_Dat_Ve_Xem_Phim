@@ -38,6 +38,15 @@ export class ShowtimeService {
     });
   }
 
+  // Admin needs an audit-friendly view, including cancelled showtimes.
+  // The public findAll() method intentionally continues to hide CANCELLED.
+  async findAllForAdmin(): Promise<Showtime[]> {
+    return this.showtimeRepository.find({
+      relations: ['room', 'room.cinema'],
+      order: { startTime: 'ASC' },
+    });
+  }
+
   async findOne(id: number): Promise<Showtime> {
     const showtime = await this.showtimeRepository.findOne({
       where: { showtimeId: id },
@@ -61,6 +70,12 @@ export class ShowtimeService {
       relations: ['room', 'room.cinema'],
       order: { startTime: 'ASC' },
     });
+  }
+
+  private assertRoomAvailable(room: Room): void {
+    if (room.status !== 'ACTIVE' || room.cinema?.status !== 'ACTIVE') {
+      throw new ConflictException('Rạp hoặc phòng chiếu không hoạt động hoặc đang bảo trì');
+    }
   }
 
   private validateTimeRange(startTime: Date, endTime: Date) {
@@ -288,6 +303,10 @@ export class ShowtimeService {
     total: number;
   }> {
     const showtime = await this.findOne(showtimeId);
+    if (showtime.status === 'CANCELLED') {
+      throw new ConflictException('Không thể sinh ghế cho suất chiếu đã hủy');
+    }
+    this.assertRoomAvailable(showtime.room);
 
     const created = await this.dataSource.transaction((manager) =>
       this.seedSeatsForShowtime(
@@ -319,6 +338,7 @@ export class ShowtimeService {
     return this.dataSource.transaction(async (manager) => {
       const room = await manager.findOne(Room, {
         where: { roomId: dto.roomId },
+        relations: ['cinema'],
       });
 
       if (!room) {
@@ -326,6 +346,7 @@ export class ShowtimeService {
           `Không tìm thấy phòng chiếu #${dto.roomId}`,
         );
       }
+      this.assertRoomAvailable(room);
 
       await this.acquireRoomScheduleLock(manager, dto.roomId);
       await this.ensureNoScheduleOverlap(
@@ -405,12 +426,14 @@ export class ShowtimeService {
 
       const room = await manager.findOne(Room, {
         where: { roomId: nextRoomId },
+        relations: ['cinema'],
       });
       if (!room) {
         throw new NotFoundException(
           `Không tìm thấy phòng chiếu #${nextRoomId}`,
         );
       }
+      if (nextStatus !== 'CANCELLED') this.assertRoomAvailable(room);
 
       const roomIdsToLock = [
         ...new Set([existing.roomId, nextRoomId]),

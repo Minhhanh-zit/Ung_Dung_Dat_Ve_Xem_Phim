@@ -88,6 +88,12 @@ export async function getAllShowtimes(): Promise<Showtime[]> {
   return unwrapList(payload).map(normalizeShowtime);
 }
 
+// Only the Admin page should call this protected endpoint.
+export async function getAdminShowtimes(): Promise<Showtime[]> {
+  const payload = (await axiosClient.get('/showtimes/admin/all')) as unknown;
+  return unwrapList(payload).map(normalizeShowtime);
+}
+
 export async function getShowtimesByMovie(movieId: number): Promise<Showtime[]> {
   const payload = (await axiosClient.get(`/showtimes/movie/${movieId}`)) as unknown;
   return unwrapList(payload).map(normalizeShowtime);

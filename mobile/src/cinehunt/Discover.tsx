@@ -3,12 +3,14 @@ import {Image,Linking,Pressable,ScrollView,Text,View,useWindowDimensions} from '
 import * as Location from 'expo-location';
 import {api,errorMessage} from '../services/apiClient';
 import {Button,C,FilmArt,GlowPanel,Kicker,Loader,Notice,S,SectionHeading,SimpleScroll} from './ui'; // CINEHUNT_FLOATING_AI_V1
-import type {Movie} from '../types';
+import type {Movie,Showtime} from '../types';
+import {isCoreCinema,scopeWard,sortScopeWards} from './cinemaScope';
+import CinemaSchedule from './CinemaSchedule';
 
 type Cinema={cinemaId:number;cinemaName:string;address?:string;latitude?:number|string|null;longitude?:number|string|null;imageUrl?:string|null;bannerUrl?:string|null;photoUrl?:string|null};
 type Combo={comboId:number;name?:string;comboName?:string;price?:number|string};
-type Props={token:string|null;favorites:number[];onOpen:(m:Movie)=>void;onAuth:()=>void};
-export default function Discover({token,favorites,onOpen,onAuth}:Props){
+type Props={token:string|null;favorites:number[];onOpen:(m:Movie)=>void;onAuth:()=>void;onSeats:(s:Showtime)=>void};
+export default function Discover({token,favorites,onOpen,onAuth,onSeats}:Props){
   const {width}=useWindowDimensions();
   const posterSize=Math.max(85,Math.min(125,Math.floor((width-40)*.484)-25));
   const [recommend,setRecommend]=useState<Movie[]>([]);const [source,setSource]=useState('');
@@ -31,7 +33,7 @@ export default function Discover({token,favorites,onOpen,onAuth}:Props){
       ]);
       const failures:string[]=[];
       if(cinemaResult.status==='fulfilled'&&Array.isArray(cinemaResult.value)){
-        setCinemas(cinemaResult.value);
+        setCinemas(cinemaResult.value.filter(isCoreCinema));
         setCinemaFetchStatus('ready');
       }else{
         setCinemas([]);
@@ -96,22 +98,22 @@ export default function Discover({token,favorites,onOpen,onAuth}:Props){
   const cinemaAreas=useMemo(()=>{
     const groups=new Map<string,Cinema[]>();
     cinemas.forEach(cinema=>{
-      const segments=(cinema.address??'').split(',').map(v=>v.trim()).filter(Boolean);
-      const areaSegments=segments.filter(v=>!['việt nam','vietnam'].includes(v.toLocaleLowerCase('vi-VN')));
-      const area=areaSegments.at(-1)?.replace(/^(thành phố|tỉnh)\s+/i,'').trim()||'Chưa xác định khu vực';
-      groups.set(area,[...(groups.get(area)??[]),cinema]);
+      // Group by CURRENT ward, never by the last comma-separated street segment.
+      const ward=scopeWard(cinema);
+      if(!ward)return;
+      groups.set(ward,[...(groups.get(ward)??[]),cinema]);
     });
-    return [...groups.entries()].sort(([a],[b])=>a.localeCompare(b,'vi'));
+    return [...groups.entries()].sort(([a],[b])=>sortScopeWards(a,b));
   },[cinemas]);
   function distanceText(cinema:Cinema){
     const km=nearby.find(item=>item.id===cinema.cinemaId)?.km;
-    return km===undefined?'Chưa xác định khoảng cách':`${km.toFixed(1)} km đường chim bay`;
+    return km===undefined?'Nhấn Chỉ đường để xem km đi xe':'Nhấn Chỉ đường để xem km đi xe thực tế';
   }
   async function openCinemaMap(cinema:Cinema){
     const lat=Number(cinema.latitude),lng=Number(cinema.longitude);
     const hasCoords=cinema.latitude!=null&&cinema.longitude!=null&&Number.isFinite(lat)&&Number.isFinite(lng);
     const destination=hasCoords?`${lat},${lng}`:[cinema.cinemaName,cinema.address].filter(Boolean).join(', ');
-    await Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`);
+    await Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`);
   }
   const fallback=source.toUpperCase().includes('FALLBACK')||source.toUpperCase().includes('POPULARITY');
   return <SimpleScroll refreshing={loading&&cinemas.length>0} onRefresh={()=>void load()}>
@@ -136,7 +138,7 @@ export default function Discover({token,favorites,onOpen,onAuth}:Props){
       </Pressable>
     </View>
     {activeTool==='gps'&&<View style={{marginBottom:16}}>
-      <SectionHeading title="Rạp gần bạn" subtitle="Danh sách rạp CineHunt lấy từ hệ thống"/>
+      <SectionHeading title="Rạp quanh bạn · khoảng cách GPS chỉ để sắp xếp" subtitle="Danh sách rạp CineHunt lấy từ hệ thống"/>
       <View style={{marginBottom:14}}><Button title="◎  Cập nhật vị trí GPS" kind="outline" onPress={()=>void locateCinemas()}/></View>
       {!!geoError&&<Notice text={geoError} bad/>}
       {!loading&&!geoError&&cinemaFetchStatus==='ready'&&cinemas.length===0&&<Notice text="Hệ thống chưa có rạp đang hoạt động để hiển thị."/>}
@@ -151,14 +153,14 @@ export default function Discover({token,favorites,onOpen,onAuth}:Props){
               </GlowPanel>}
             <View style={{padding:13,gap:6}}>
               <Text numberOfLines={1} style={{fontSize:17,color:C.white,fontWeight:'900'}}>{cinema.cinemaName}</Text>
-              <Text numberOfLines={2} style={{fontSize:12,color:C.muted,minHeight:30}}>{cinema.address||'Chưa có địa chỉ'}</Text>
+              <Text numberOfLines={2} style={{fontSize:12,color:C.muted,minHeight:30}}>{scopeWard(cinema)} · {cinema.address||'Chưa có địa chỉ'}</Text>
               <Text style={{fontSize:13,color:C.cyan,fontWeight:'800'}}>{distanceText(cinema)}</Text>
-              <Text style={{fontSize:12,color:C.purple,fontWeight:'800'}}>Xem bản đồ  ↗</Text>
+              <Text style={{fontSize:12,color:C.purple,fontWeight:'800'}}>Chỉ đường  ↗</Text>
             </View>
           </Pressable>;
         })}
       </ScrollView>
-      <SectionHeading title="Chọn rạp theo khu vực" subtitle="Chạm vào khu vực để xem từng rạp"/>
+      <SectionHeading title="Chọn rạp theo phường" subtitle="Ba phường: Thanh Xuân · Hà Đông · Cầu Giấy"/>
       {cinemaAreas.map(([area,list])=><View key={area} style={{marginBottom:10,borderRadius:15,overflow:'hidden',borderWidth:1,borderColor:C.stroke,backgroundColor:C.panel}}>
         <Pressable accessibilityRole="button" accessibilityLabel={`Khu vực ${area}, ${list.length} rạp`} accessibilityState={{expanded:expandedArea===area}} onPress={()=>setExpandedArea(expandedArea===area?null:area)} style={{flexDirection:'row',alignItems:'center',paddingHorizontal:16,paddingVertical:17,gap:10}}>
           <Text style={{flex:1,color:C.white,fontSize:16,fontWeight:'700'}}>{area}</Text>
@@ -169,11 +171,12 @@ export default function Discover({token,favorites,onOpen,onAuth}:Props){
           {list.map(cinema=><Pressable key={String(cinema.cinemaId)} accessibilityRole="button" onPress={()=>void openCinemaMap(cinema)} style={{paddingVertical:13,borderBottomWidth:1,borderBottomColor:C.stroke,flexDirection:'row',alignItems:'center',gap:12}}>
             <Text style={{fontSize:21,color:C.purple}}>⌖</Text>
             <View style={{flex:1}}><Text style={{color:C.white,fontWeight:'800',fontSize:14}}>{cinema.cinemaName}</Text><Text style={{color:C.muted,fontSize:11,marginTop:5}}>{cinema.address||'Chưa có địa chỉ'}</Text><Text style={{color:C.cyan,fontSize:11,marginTop:4}}>{distanceText(cinema)}</Text></View>
-            <Text style={{color:C.purple,fontSize:12,fontWeight:'800'}}>Bản đồ ↗</Text>
+            <Text style={{color:C.purple,fontSize:12,fontWeight:'800'}}>Chỉ đường ↗</Text>
           </Pressable>)}
         </View>}
       </View>)}
     </View>}
+    <CinemaSchedule cinemas={cinemas} onSeats={onSeats} />
     <SectionHeading title="Gợi ý dành cho bạn" subtitle={fallback?'Phim nổi bật đang được yêu thích':'Gợi ý từ dữ liệu phim CineHunt'}/>
     {!token?<Button title="Đăng nhập để nhận gợi ý" onPress={onAuth}/>:<>
       {source&&!fallback&&<Text style={[S.muted,{marginBottom:10,fontSize:11}]}>Kết quả phụ thuộc vào dữ liệu tương tác hiện có.</Text>}

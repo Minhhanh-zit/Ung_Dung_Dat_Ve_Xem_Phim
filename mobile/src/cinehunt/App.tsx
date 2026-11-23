@@ -35,6 +35,7 @@ export default function CineHuntApp(){
   const [favorites,setFavorites]=useState<number[]>([]);
   const [returnScreen,setReturnScreen]=useState<Screen>('main');
   const [ordersRevision,setOrdersRevision]=useState(0);
+  const [seatOrigin,setSeatOrigin]=useState<'detail'|'discover'>('detail');
   useEffect(()=>{
     const unsubscribe=subscribeNativeTokenChanges(next=>{
       setToken(next);
@@ -75,18 +76,18 @@ export default function CineHuntApp(){
   function logout(){void saveRefreshToken(null);setToken(null);setUser(null);setScreen('main');setTab('account')}
   function selectTab(next:Tab){setTab(next);setScreen('main')}
   function openBooking(ref:string){setBookingId(ref);setScreen('booking');setOrdersRevision(n=>n+1)}
-  function showSeats(item:Showtime){setShowtime(item);setScreen(token?'seats':'auth');if(!token)setReturnScreen('seats')}
+  function showSeats(item:Showtime){setSeatOrigin(screen==='main'&&tab==='discover'?'discover':'detail');setShowtime(item);setScreen(token?'seats':'auth');if(!token)setReturnScreen('seats')}
   const isHome=screen==='main';
   const toggleFav=(id:number)=>setFavorites(v=>v.includes(id)?v.filter(x=>x!==id):[...v,id]);
   function goBack(){
-    if(screen==='seats')setScreen('detail');
+    if(screen==='seats')setScreen(seatOrigin==='discover'?'main':'detail');
     else if(screen==='booking')setScreen('main');
     else if(screen==='tickets')setScreen('booking');
     else if(screen==='auth')setScreen(returnScreen==='auth'?'main':returnScreen);
     else setScreen('main');
   }
   if(!ready)return <View style={{flex:1,backgroundColor:C.bg}}/>;
-  return <SafeAreaView key={dark?'dark':'light'} style={S.screen} edges={['top','left','right','bottom']}>
+  return <SafeAreaView style={S.screen} edges={['top','left','right','bottom']}>
     <StatusBar barStyle={dark?'light-content':'dark-content'}/>
     <View style={{height:65,paddingHorizontal:21,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderBottomWidth:1,borderBottomColor:C.line}}>
       <Pressable accessibilityRole="button" onPress={()=>selectTab('movies')} style={{flexDirection:'row',alignItems:'center',gap:9}}>
@@ -103,7 +104,7 @@ export default function CineHuntApp(){
     </View>
     <View style={{flex:1}}>
       {screen==='main'&&tab==='movies'&&<Movies mode="list" favorites={favorites} onToggleFav={toggleFav} onOpen={m=>{setMovie(m);setScreen('detail')}}/>}
-      {screen==='main'&&tab==='discover'&&<Discover token={token} favorites={favorites} onOpen={m=>{setMovie(m);setScreen('detail')}} onAuth={()=>requestAuth('main')}/>}
+      {screen==='main'&&tab==='discover'&&<Discover token={token} favorites={favorites} onOpen={m=>{setMovie(m);setScreen('detail')}} onAuth={()=>requestAuth('main')} onSeats={showSeats}/>}
       {screen==='main'&&tab==='orders'&&<Orders token={token} revision={ordersRevision} onOpen={openBooking} onAuth={()=>requestAuth('main')}/>}
       {screen==='main'&&tab==='account'&&<Account token={token} user={user} onLogin={(t,u)=>{setToken(t);setUser(u)}} onLogout={logout}/>}
       {screen==='detail'&&movie&&<Movies mode="detail" selectedMovie={movie} token={token} favorites={favorites} onToggleFav={toggleFav} onOpen={()=>{}} onSeats={showSeats} onAuth={()=>requestAuth('detail')}/>}

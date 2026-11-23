@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   cancelShowtime as apiCancelShowtime,
   createShowtime as apiCreateShowtime,
-  getAllShowtimes,
+  getAdminShowtimes,
   getMovieOptions,
   getRoomOptions,
   updateShowtime as apiUpdateShowtime,
@@ -32,7 +32,7 @@ export const useShowtimes = () => {
     setError(null);
     try {
       const [list, movieOpts, roomOpts] = await Promise.all([
-        getAllShowtimes(),
+        getAdminShowtimes(),
         getMovieOptions().catch(() => [] as MovieOption[]),
         getRoomOptions().catch(() => [] as RoomOption[]),
       ]);

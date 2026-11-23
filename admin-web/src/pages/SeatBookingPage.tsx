@@ -19,27 +19,6 @@ const FALLBACK_BACKDROP = "https://picsum.photos/seed/fallbackbackdrop/1600/900"
 const MAX_SEATS    = 8;
 const HOLD_SECONDS = 600;
 
-function generateMockSeats(showtimeId?: string): SeatDto[] {
-  void showtimeId;
-  const rows  = ['A','B','C','D','E','F','G','H'];
-  const cols  = 10;
-  const seats: SeatDto[] = [];
-  for (const row of rows) {
-    for (let col = 1; col <= cols; col++) {
-      const t = (row >= 'E') ? 'VIP' : 'STANDARD';
-      seats.push({
-        id:         `${row}${col}`,
-        rowName:    row,
-        seatNumber: col,
-        type:       t,
-        status:     'AVAILABLE',
-        price:      t === 'VIP' ? 120_000 : 90_000,
-      });
-    }
-  }
-  return seats;
-}
-
 function getYoutubeEmbedUrl(url?: string | null): string | null {
   if (!url) return null;
   const m = url.match(/(?:v=|youtu\.be\/)([\w-]{11})/);
@@ -98,7 +77,7 @@ const MOCK_REASON_USER_TEXT: Record<MockReason, string> = {
 
 function logMockFallback(reason: MockReason, detail?: unknown) {
   console.warn(
-    `[SeatBookingPage] Fallback sang ghế mẫu — ${reason}: ${MOCK_REASON_TEXT[reason]}`,
+    `[SeatBookingPage] Không có dữ liệu ghế từ backend — ${reason}: ${MOCK_REASON_TEXT[reason]}`,
     detail ?? '',
   );
 }
@@ -195,7 +174,7 @@ export default function SeatBookingPage() {
 
       if (!showtimeId) {
         logMockFallback('NO_SHOWTIME_ID');
-        setSeats(generateMockSeats());
+        setSeats([]);
         setUsingMock(true);
         setMockReason('NO_SHOWTIME_ID');
         setLoading(false);
@@ -235,7 +214,7 @@ export default function SeatBookingPage() {
             ? 'EMPTY_SEAT_LIST'
             : 'SEATS_NOT_GENERATED';
           logMockFallback(reason, { showtimeId, totalSeats: data.totalSeats });
-          setSeats(generateMockSeats(showtimeId));
+          setSeats([]);
           setUsingMock(true);
           setMockReason(reason);
         } else {
@@ -260,7 +239,7 @@ export default function SeatBookingPage() {
         const msg = (err as { message?: string })?.message ?? 'Không tải được sơ đồ ghế';
         logMockFallback('API_ERROR', err);
         setError(msg);
-        setSeats(generateMockSeats(showtimeId));
+        setSeats([]);
         setUsingMock(true);
         setMockReason('API_ERROR');
       } finally {
@@ -650,7 +629,7 @@ export default function SeatBookingPage() {
         {usingMock && (
           <div className="rounded-xl px-4 py-3 bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 text-sm">
             <p className="font-semibold">
-              ⚠️ Đang dùng dữ liệu ghế mẫu — không thể đặt vé từ dữ liệu này.
+              ⚠️ Chưa có sơ đồ ghế thực tế. Không thể tiếp tục đặt vé.
             </p>
             {mockReason && (
               <p className="mt-1 text-yellow-500/80">{MOCK_REASON_USER_TEXT[mockReason]}</p>

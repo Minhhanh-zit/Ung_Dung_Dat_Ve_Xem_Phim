@@ -1,0 +1,65 @@
+# CineHunt, voluntary local smoke test on Mac ONLY. No SQL schema/seed/ALTER operations.
+# Reads an EXISTING test SQL Server through Docker Desktop host.docker.internal.
+# Usage: docker compose --env-file .env.compose.local -f compose.local.yaml up -d --build
+name: cinehunt-smoke
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      DB_HOST: host.docker.internal
+      DB_PORT: ${DB_HOST_PORT:-14332}
+      DB_USERNAME: ${DB_USERNAME:-sa}
+      DB_PASSWORD: ${DB_PASSWORD:?Configure local SQL test password}
+      DB_DATABASE: ${DB_DATABASE:?Choose a prepared TEST database}
+      DB_ENCRYPT: 'false'
+      DB_TRUST_SERVER_CERTIFICATE: 'true'
+      DB_MIGRATIONS_RUN: 'false'
+      ALLOW_DEMO_PAYMENT: 'false'
+      JWT_SECRET: ${JWT_SECRET:?Provide unique JWT secret}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Provide a different JWT secret}
+      RECOMMENDATION_SERVICE_URL: http://ai:8000
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      SWAGGER_ENABLED: 'false'
+    ports:
+      - '${BACKEND_BIND:-127.0.0.1}:3000:3000'
+    volumes:
+      - uploads:/app/uploads
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 6s
+      retries: 5
+      start_period: 60s
+  ai:
+    build: ./ai
+    restart: unless-stopped
+    environment:
+      DB_HOST: host.docker.internal
+      DB_PORT: ${DB_HOST_PORT:-14332}
+      DB_USERNAME: ${DB_USERNAME:-sa}
+      DB_PASSWORD: ${DB_PASSWORD:?Configure local SQL test password}
+      DB_DATABASE: ${DB_DATABASE:?Choose a prepared TEST database}
+      DB_ENCRYPT: 'false'
+      DB_TRUST_SERVER_CERTIFICATE: 'true'
+      DB_CONNECTOR: pyodbc
+      DB_ODBC_DRIVER: 'ODBC Driver 18 for SQL Server'
+      AUTO_TRAIN_ON_START: 'false'
+    volumes:
+      - ai_models:/app/model
+  admin-web:
+    build: ./admin-web
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BACKEND_URL: http://backend:3000
+      NGINX_RESOLVER: '127.0.0.11'
+    ports:
+      - '${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:80'
+volumes:
+  uploads:
+  ai_models:

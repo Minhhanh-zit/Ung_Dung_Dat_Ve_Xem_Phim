@@ -45,6 +45,16 @@ export const adminBookingApi = {
   },
 
   getDetail: (id: string | number) => get<unknown>(`/bookings/admin/${id}`),
+  getPayment: (bookingId: string | number) => get<{
+    paymentId: string; bookingId: string; amount: number;
+    paymentMethod: string; paymentStatus: string;
+    transactionCode?: string;
+  }>(`/payments/booking/${bookingId}`),
+  confirmBankTransfer: (paymentId: string, bankReference: string) =>
+    post<{ success: boolean; bookingId: string; paymentId: string }>(
+      `/payments/${encodeURIComponent(paymentId)}/admin-bank-confirm`,
+      { bankReference },
+    ),
 
   updateStatus: (id: string | number, status: string) =>
     patch<AdminBooking>(`/bookings/admin/${id}/status`, { status }),

@@ -12,7 +12,7 @@ CineHunt gồm ứng dụng Mobile cho khách hàng, ứng dụng Web (khách h�
 | [admin-web/](admin-web/) | React + TypeScript + Vite | Giao diện khách hàng, nhân viên và quản trị |
 | [backend/](backend/) | NestJS + TypeORM | API, xác thực, ghế, đặt vé, thanh toán, vé và quản trị |
 | [ai/](ai/) | Python + FastAPI | Gợi ý phim theo mô hình hoặc fallback popularity |
-| [database/](database/) | SQL Server | **Hiện mới có hướng dẫn; schema SQL gốc chưa được đưa lên GitHub** |
+| [database/](database/) | SQL Server | **Có SQL V6.3 ở `database/reference/` (không chạy trên DB có dữ liệu do chứa DROP TABLE)** |
 | [docs/setup/](docs/setup/) | Markdown / log | Minh chứng kiểm tra khởi tạo ngày 27/10/2026 |
 
 ## Bắt đầu trên máy mới
@@ -26,7 +26,7 @@ CineHunt gồm ứng dụng Mobile cho khách hàng, ứng dụng Web (khách h�
    - `cp admin-web/.env.example admin-web/.env.local`
    - `cp mobile/.env.example mobile/.env.local`
 3. Sửa các giá trị placeholder, đặt **mật khẩu SQL Server và hai JWT secret riêng** trong `backend/.env`. Không để giá trị thật trong ví dụ hoặc commit.
-4. Database phải có schema tương thích **trước khi** chạy ứng dụng cần dữ liệu. **SQL V6.3 gốc chưa có trên repository này**: xem [database/README.md](database/README.md); không chạy lại seed hay migration trên DB có dữ liệu thật.
+4. Database phải có schema tương thích **trước khi** chạy ứng dụng cần dữ liệu. **SQL V6.3 tham chiếu đã có trong `database/reference/`, nhưng KHÔNG an toàn để chạy lại trên DB đang dùng**: xem [database/README.md](database/README.md); không chạy lại seed hay migration trên DB có dữ liệu thật.
 5. Chạy các dịch vụ từ **đúng thư mục** theo bảng bên dưới.
 
 | Thư mục | Cài đặt | Lệnh phát triển / kiểm tra |
@@ -63,8 +63,8 @@ Thông tin **CV01 ngày 27/10/2026** trong [docs/setup/validation-report.md](doc
 
 ## Hạn chế còn lại
 
-1. Chưa có bản schema SQL gốc an toàn để người khác clone repo và tự dựng DB mới.
-2. Mobile hiện giữ JWT và danh sách yêu thích trong RAM, không lưu vững bền qua lần mở ứng dụng.
+1. SQL tham chiếu V6.3 chứa thao tác DROP; script demo an toàn nằm tại `database/safe/` (phải thử trên DB mới và độc lập).
+2. Mobile dùng SecureStore để lưu phiên nhạy cảm trên native và lưu yêu thích/theme; cần kiểm thử khôi phục phiên trên máy thật.
 3. Chưa có ảnh poster thật hoàn chỉnh cho danh sách phim; cần kiểm tra UI/UX trên nhiều kích thước màn hình.
 4. Các luồng thanh toán thật, webhook, QR và soát vé cần kiểm thử tích hợp theo vai trò trước khi phát hành.
 5. Cần tiếp tục rà soát npm audit và cấu hình production, không xem repository này là cấu hình production hoàn chỉnh.

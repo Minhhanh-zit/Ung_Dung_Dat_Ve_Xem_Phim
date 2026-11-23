@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CinemaService } from './cinema.service';
+import { Throttle } from '@nestjs/throttler';
 import { Cinema } from '../entities/cinema.entity';
 import { Room } from '../entities/room.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -23,6 +24,13 @@ export class CinemaController {
   @Get()
   findAll() {
     return this.cinemaService.findAllCinemas();
+  }
+
+  @Post('nearest')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @UseGuards(JwtAuthGuard)
+  nearest(@Body() body: {latitude?:number;longitude?:number;originAddress?:string}) {
+    return this.cinemaService.findNearestCinemas(body);
   }
 
   @Get(':id')

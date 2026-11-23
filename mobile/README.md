@@ -30,7 +30,7 @@ Nếu hai thiết bị ở khác mạng, có thể dùng Tailscale. Khi Metro kh
 - **Khám phá:** rạp, combo, gợi ý phim từ Backend (có thể fallback popularity), tìm rạp bằng GPS và chatbot tùy cấu hình.
 - **Tài khoản:** đăng nhập, đăng ký, hồ sơ; một số thao tác nhân viên cần quyền STAFF/ADMIN.
 
-**Giới hạn:** JWT và yêu thích được lưu trong RAM, mất khi tải lại ứng dụng; poster phim có thể chỉ là placeholder. Giao diện chạy được **không đồng nghĩa** toàn bộ nghiệp vụ hoặc thanh toán đã qua nghiệm thu.
+**Giới hạn:** phiên nhạy cảm trên thiết bị native được lưu qua SecureStore; yêu thích và theme có cơ chế lưu riêng (cần kiểm thử trên thiết bị); poster phim có thể chỉ là placeholder. Giao diện chạy được **không đồng nghĩa** toàn bộ nghiệp vụ hoặc thanh toán đã qua nghiệm thu.
 
 ## Kiểm thử an toàn
 

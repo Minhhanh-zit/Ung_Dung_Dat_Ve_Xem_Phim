@@ -73,10 +73,12 @@ const config = {
         .input('name', sql.NVarChar(120), fullName)
         .input('email', sql.VarChar(150), email)
         .input('hash', sql.VarChar(255), passwordHash)
-        .query(`INSERT INTO users
+        .query(`DECLARE @new_user TABLE (user_id INT);
+                INSERT INTO dbo.users
                   (full_name, email, password_hash, email_verified, failed_login_attempts, role, status)
-                OUTPUT INSERTED.user_id
-                VALUES (@name, @email, @hash, 1, 0, 'ADMIN', 'ACTIVE')`);
+                OUTPUT INSERTED.user_id INTO @new_user (user_id)
+                VALUES (@name, @email, @hash, 1, 0, 'ADMIN', 'ACTIVE');
+                SELECT user_id FROM @new_user;`);
       userId = inserted.recordset[0].user_id;
       console.log(`Đã tạo tài khoản ADMIN mới (id=${userId}).`);
     }

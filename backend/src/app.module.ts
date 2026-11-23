@@ -5,6 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { BookingModule } from './booking/booking.module';
+import { HealthModule } from './health/health.module';
 import { ShowtimeSeatsModule } from './showtime-seats/showtime-seats.module';
 import { MovieModule } from './movie/movie.module';
 import { MovieRatingModule } from './movie-rating/movie-rating.module';
@@ -79,6 +80,7 @@ function validateEnvironment(
       validate: validateEnvironment,
     }),
     ScheduleModule.forRoot(),
+    HealthModule,
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

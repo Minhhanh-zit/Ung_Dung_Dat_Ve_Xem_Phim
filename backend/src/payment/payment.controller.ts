@@ -10,6 +10,9 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PaymentService } from './payment.service';
 import { CreatePaymentDto } from './dto';
+import { ConfirmBankTransferDto } from './dto/confirm-bank-transfer.dto';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import {
   PaymentAccess,
   PaymentAccessGuard,
@@ -64,6 +67,21 @@ export class PaymentController {
   async createPayment(@Request() req, @Body() dto: CreatePaymentDto) {
     const userId = req.user.userId ?? req.user.user_id;
     return this.paymentService.createPayment(userId, dto);
+  }
+
+  // Only staff/admin, and only AFTER checking the incoming bank transfer externally.
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'STAFF')
+  @Post(':id/admin-bank-confirm')
+  confirmBankTransfer(
+    @Param('id') id: string,
+    @Body() dto: ConfirmBankTransferDto,
+    @Request() req,
+  ) {
+    const actorId = Number(req.user.userId ?? req.user.user_id);
+    return this.paymentService.processPaymentSuccess(id, {
+      bankingProof: { verifiedBy: actorId, bankReference: dto.bankReference.trim() },
+    });
   }
 
   @UseGuards(JwtAuthGuard, PaymentAccessGuard)

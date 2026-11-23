@@ -1,10 +1,13 @@
 import {
   BadRequestException,
   Injectable,
+  Optional,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
+import { findCinemasNearby, type OriginInput } from './cinema-distance';
 import { Cinema } from '../entities/cinema.entity';
 import { Room } from '../entities/room.entity';
 import { assertNotStale } from '../common/utils/optimistic-lock.util';
@@ -14,7 +17,14 @@ export class CinemaService {
   constructor(
     @InjectRepository(Cinema) private cinemaRepo: Repository<Cinema>,
     @InjectRepository(Room) private roomRepo: Repository<Room>,
+    @Optional() private readonly configService?: ConfigService,
   ) {}
+
+  async findNearestCinemas(input: OriginInput) {
+    const rows = await this.findAllCinemas();
+    return findCinemasNearby(rows, input,
+      this.configService?.get<string>('GOOGLE_MAPS_ROUTES_API_KEY'));
+  }
 
   findAllCinemas() {
     return this.cinemaRepo.find({

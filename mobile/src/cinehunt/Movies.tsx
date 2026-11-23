@@ -3,6 +3,7 @@ import {Pressable,Text,TextInput,View,useWindowDimensions} from 'react-native';
 import {api,errorMessage,formatDate,formatMoney} from '../services/apiClient';
 import {Button,C,FilmArt,GlowPanel,Kicker,Loader,Notice,S,SectionHeading,SimpleScroll} from './ui';
 import type {Movie,Showtime} from '../types';
+import {isCoreShowtime} from './cinemaScope';
 
 type Props={mode:'list'|'detail';selectedMovie?:Movie;token?:string|null;favorites:number[];onToggleFav:(id:number)=>void;onOpen:(m:Movie)=>void;onSeats?:(s:Showtime)=>void;onAuth?:()=>void};
 export default function Movies({mode,selectedMovie,token,favorites,onToggleFav,onOpen,onSeats,onAuth}:Props){
@@ -11,6 +12,7 @@ export default function Movies({mode,selectedMovie,token,favorites,onToggleFav,o
   const [movies,setMovies]=useState<Movie[]>([]);
   const [detail,setDetail]=useState<Movie|null>(null);
   const [shows,setShows]=useState<Showtime[]>([]);
+  const [showDate,setShowDate]=useState('all');
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
   const [search,setSearch]=useState('');
@@ -44,7 +46,7 @@ export default function Movies({mode,selectedMovie,token,favorites,onToggleFav,o
     let active=true;
     void Promise.resolve().then(()=>{
       if(!active)return;
-      setDetail(null);setShows([]);setLoading(true);setError('');setRatingMessage('');setRating(0);
+      setShowDate('all');setDetail(null);setShows([]);setLoading(true);setError('');setRatingMessage('');setRating(0);
       return Promise.all([api<Movie>(`/movies/${selectedMovieId}`),api<Showtime[]>(`/showtimes/movie/${selectedMovieId}`)])
         .then(([m,s])=>{if(active){setDetail(m);setShows(Array.isArray(s)?s:[]);}})
         .catch(e=>{if(active)setError(errorMessage(e))})
@@ -141,7 +143,10 @@ export default function Movies({mode,selectedMovie,token,favorites,onToggleFav,o
     <View style={{marginTop:21}}><Button title="↻  Tải lại danh sách phim" kind="outline" onPress={()=>void loadList()}/></View>
   </SimpleScroll>;
   const movie=detail??selectedMovie;
-  const upcoming=now===null?[]:shows.filter(s=>s.status==='OPEN'&&new Date(s.startTime).getTime()>now).sort((a,b)=>new Date(a.startTime).getTime()-new Date(b.startTime).getTime());
+  const upcoming=now===null?[]:shows.filter(s=>s.status==='OPEN'&&isCoreShowtime(s)&&new Date(s.startTime).getTime()>now).sort((a,b)=>new Date(a.startTime).getTime()-new Date(b.startTime).getTime());
+  const toDay=(value:string)=>{const d=new Date(value);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+  const scheduleDays=[...new Set(upcoming.map(s=>toDay(s.startTime)))];
+  const visibleShows=showDate==='all'?upcoming:upcoming.filter(s=>toDay(s.startTime)===showDate);
   return <SimpleScroll>
     {loading&&<Loader/>}{!!error&&<Notice text={error} bad/>}
     {movie&&<>
@@ -165,7 +170,11 @@ export default function Movies({mode,selectedMovie,token,favorites,onToggleFav,o
       </View>
       <SectionHeading title="Lịch chiếu" subtitle="Chọn suất phù hợp để đặt vé"/>
       {!loading&&upcoming.length===0&&<Notice text="Chưa có suất chiếu sắp tới hoặc đã đóng bán. Vui lòng xem phim khác hoặc quay lại sau."/>}
-      {upcoming.map(s=><View key={s.showtimeId} style={S.card}>
+      {upcoming.length>0&&<View style={{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:12}}>
+        <Pressable onPress={()=>setShowDate('all')} style={{backgroundColor:showDate==='all'?C.purple:C.panel,padding:10,borderRadius:12}}><Text style={{color:showDate==='all'?C.bg:C.white,fontWeight:'800'}}>Tất cả ngày</Text></Pressable>
+        {scheduleDays.map(day=><Pressable key={day} onPress={()=>setShowDate(day)} style={{backgroundColor:showDate===day?C.purple:C.panel,padding:10,borderRadius:12}}><Text style={{color:showDate===day?C.bg:C.white,fontWeight:'800'}}>{day.split('-').reverse().join('/')}</Text></Pressable>)}
+      </View>}
+      {visibleShows.map(s=><View key={s.showtimeId} style={S.card}>
         <Kicker>RẠP CHIẾU</Kicker><Text style={{color:C.white,fontWeight:'900',fontSize:16,marginTop:8}}>{s.room?.cinema?.cinemaName||'Rạp CineHunt'}</Text>
         <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:15}}>
           <View><Text style={{color:C.cyan,fontSize:16,fontWeight:'800'}}>{formatDate(s.startTime)}</Text><Text style={[S.muted,{marginTop:5}]}>Phòng {s.room?.roomName||'Đang cập nhật'}</Text></View>

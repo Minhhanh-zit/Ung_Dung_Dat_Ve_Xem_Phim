@@ -271,7 +271,10 @@ export class PaymentService {
 
   async processPaymentSuccess(
     paymentId: string,
-    options: { allowExpiredCounterPayment?: boolean } = {},
+    options: {
+      allowExpiredCounterPayment?: boolean;
+      bankingProof?: { verifiedBy: number; bankReference: string };
+    } = {},
   ) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -321,6 +324,17 @@ export class PaymentService {
         );
       }
 
+      if (payment.paymentMethod === 'BANKING') {
+        const proof = options.bankingProof;
+        if (!proof || !Number.isInteger(proof.verifiedBy) || proof.verifiedBy <= 0 ||
+            !proof.bankReference?.trim() || proof.bankReference.trim().length < 6 ||
+            proof.bankReference.trim().length > 100) {
+          throw new BadRequestException(
+            'Chuyển khoản BANKING phải được STAFF/ADMIN đối chiếu giao dịch ngân hàng trước khi xác nhận.',
+          );
+        }
+      }
+
       if (Number(payment.amount) !== Number(booking.totalAmount)) {
         throw new BadRequestException(
           'Số tiền payment không khớp tổng tiền booking',
@@ -358,10 +372,44 @@ export class PaymentService {
         );
       }
 
+      const proof = payment.paymentMethod === 'BANKING' ? options.bankingProof : undefined;
+      if (proof) {
+        // Serialize confirmations of the SAME incoming-bank reference across bookings.
+        // A receipt must never pay for two different bookings.
+        const lockRows = (await queryRunner.manager.query(
+          `DECLARE @result INT;
+           EXEC @result = sys.sp_getapplock
+             @Resource = @0, @LockMode = 'Exclusive',
+             @LockOwner = 'Transaction', @LockTimeout = 10000;
+           SELECT @result AS lock_result;`,
+          [`CineHunt.BankRef.${proof.bankReference.trim().toUpperCase()}`],
+        )) as Array<{ lock_result: number }>;
+        if (Number(lockRows[0]?.lock_result ?? -999) < 0) {
+          throw new BadRequestException('Không thể khóa mã giao dịch để đối soát. Hãy thử lại.');
+        }
+        const reused = (await queryRunner.manager.query(
+          `SELECT TOP (1) payment_id FROM dbo.payments WITH (UPDLOCK, HOLDLOCK)
+           WHERE payment_method = 'BANKING' AND payment_status = 'SUCCESS'
+             AND CASE WHEN ISJSON(provider_response) = 1
+               THEN UPPER(JSON_VALUE(provider_response, '$.bankReference')) ELSE NULL END = UPPER(@0)
+             AND payment_id <> @1`,
+          [proof.bankReference.trim(), paymentId],
+        )) as Array<{ payment_id: string }>;
+        if (reused.length) {
+          throw new BadRequestException('Mã giao dịch ngân hàng này đã xác nhận cho đơn khác.');
+        }
+      }
       await queryRunner.manager.update(Payment, { paymentId }, {
         paymentStatus: 'SUCCESS',
         failedReason: null,
         paidAt: new Date(),
+        providerResponse: proof
+          ? JSON.stringify({
+              verifiedManually: true,
+              bankReference: proof.bankReference.trim(),
+              verifiedBy: proof.verifiedBy,
+            })
+          : payment.providerResponse,
       });
 
       const seatIds = bookingDetails.map((d) => d.showtimeSeatId);
@@ -438,6 +486,27 @@ export class PaymentService {
           seatLabel,
           price: Number(detail.seatPrice),
         });
+      }
+
+      if (proof) {
+        // Same SQL transaction as PAID + tickets: no un-audited success.
+        await queryRunner.manager.query(
+          `INSERT INTO dbo.audit_logs
+            (user_id, action, entity_type, entity_id, old_values, new_values)
+           VALUES (@0, 'BANK_TRANSFER_VERIFIED', 'Payment', @1, @2, @3)`,
+          [
+            proof.verifiedBy,
+            paymentId,
+            JSON.stringify({ paymentStatus: 'PENDING' }),
+            JSON.stringify({
+              paymentStatus: 'SUCCESS',
+              bookingId: booking.bookingId,
+              amount: Number(payment.amount),
+              bankReference: proof.bankReference.trim(),
+              verifiedBy: proof.verifiedBy,
+            }),
+          ],
+        );
       }
 
       await queryRunner.commitTransaction();

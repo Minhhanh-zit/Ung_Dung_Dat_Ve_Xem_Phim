@@ -8,8 +8,8 @@ export type Movie = {
   averageRating?: number | null;
 };
 export type Showtime = {
-  showtimeId: number; startTime: string; endTime?: string; status: string;
-  basePrice: number | string; room?: { roomName?: string; cinema?: { cinemaName?: string; address?: string } };
+  showtimeId: number; movieId?: number; startTime: string; endTime?: string; status: string;
+  basePrice: number | string; room?: { roomName?: string; cinema?: { cinemaId?: number; cinemaName?: string; address?: string } };
 };
 export type Seat = {
   showtimeSeatId: number; seatId: number; seatLabel: string; seatRow: string | null;

@@ -71,7 +71,7 @@ export default function Account({token,user,forceAuth=false,onLogin,onLogout}:Pr
     {loading&&<Loader/>}{!!error&&<Notice text={error} bad/>}{!!info&&<Notice text={info}/>}
     <Button title={mode==='login'?'Đăng nhập  →':'Tạo tài khoản  →'} disabled={loading} onPress={()=>void submitAuth()}/>
     <Button kind="outline" title={mode==='login'?'Chưa có tài khoản? Đăng ký':'Đã có tài khoản? Đăng nhập'} onPress={()=>{setMode(mode==='login'?'register':'login');setError('')}}/>
-    <Text style={[S.muted,{textAlign:'center',fontSize:11,marginTop:16}]}>Phiên đăng nhập hiện chưa được lưu khi ứng dụng tải lại.</Text>
+    <Text style={[S.muted,{textAlign:'center',fontSize:11,marginTop:16}]}>Ứng dụng hỗ trợ khôi phục phiên đăng nhập an toàn trên thiết bị khi còn hợp lệ.</Text>
   </SimpleScroll>;
   const isStaff=['STAFF','ADMIN'].includes(String(user?.role||profile?.role||'').toUpperCase());
   const progress=Math.min(100,Math.max(0,Number(membership?.progressPercent??0)||0));

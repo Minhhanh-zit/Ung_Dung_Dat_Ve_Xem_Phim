@@ -216,11 +216,19 @@ const AdminShowtimesPage: React.FC = () => {
         <ShowtimeTable
           showtimes={visibleShowtimes}
           onEdit={(s) => {
-            setEditingShowtime(s);
-            setIsFormOpen(true);
+            // Wait for fresh server data before mounting a form with initial useState.
+            // Otherwise a late response updates props but not formData.
             void getShowtimeById(s.id)
-              .then((fresh) => setEditingShowtime(fresh))
-              .catch(() => { /* giữ nguyên bản cache */ });
+              .then((fresh) => {
+                setEditingShowtime(fresh);
+                setIsFormOpen(true);
+              })
+              .catch((err: unknown) => {
+                showToast(
+                  (err as { message?: string })?.message ?? 'Không thể tải thông tin suất chiếu để sửa',
+                  'error',
+                );
+              });
           }}
           onCancel={(s) => setCancelingShowtime(s)}
           onGenerateSeats={(s) => void handleGenerateSeats(s.id)}
