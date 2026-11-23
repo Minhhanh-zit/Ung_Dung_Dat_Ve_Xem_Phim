@@ -29,7 +29,7 @@ const SeatMap: React.FC<SeatMapProps> = ({
     return groups;
   }, [seats]);
 
-  const rowNames = useMemo(() => Object.keys(groupedSeats).sort(), [groupedSeats]);
+  const rowNames = useMemo(() => Object.keys(groupedSeats).sort((a, b) => a.localeCompare(b, 'vi')), [groupedSeats]);
 
   const isDisabled = (seatId: SeatId, status: string): boolean =>
     UNSELECTABLE_STATUSES.includes(status as never) || (heldIds?.has(String(seatId)) ?? false);

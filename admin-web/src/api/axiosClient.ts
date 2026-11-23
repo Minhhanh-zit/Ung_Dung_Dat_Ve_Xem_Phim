@@ -160,12 +160,13 @@ axiosClient.interceptors.response.use(
       }
     }
 
-    return Promise.reject({
+    // Reject with an actual Error while retaining existing client metadata.
+    const normalizedError = Object.assign(new Error(message), {
       status,
       code: error.code,
-      message,
       raw: error,
     });
+    return Promise.reject(normalizedError);
   }
 );
 

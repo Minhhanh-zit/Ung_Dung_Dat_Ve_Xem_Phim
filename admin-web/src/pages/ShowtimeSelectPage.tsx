@@ -120,7 +120,7 @@ export default function ShowtimeSelectPage() {
 
   const availableDates = useMemo(() => {
     const set = new Set(allShowtimes.map((s) => s.startTime.split('T')[0]));
-    return Array.from(set).sort();
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [allShowtimes]);
 
   const didSetDefault = useRef(false);
