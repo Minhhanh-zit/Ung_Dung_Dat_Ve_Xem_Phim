@@ -11,7 +11,7 @@ export const formatDate = (dateString: string): string => {
 
 export const getAvailableDates = (showtimes: { startTime: string }[]): string[] => {
   if (!showtimes?.length) return [];
-  return Array.from(new Set(showtimes.map(s => s.startTime.split('T')[0]))).sort();
+  return Array.from(new Set(showtimes.map(s => s.startTime.split('T')[0]))).sort((a, b) => a.localeCompare(b));
 };
 
 export const filterShowtimesByDate = (
