@@ -38,7 +38,7 @@ jobs:
             --test-reporter-destination=coverage/lcov.info \
             test/*.test.ts
       - name: Verify production source coverage and normalize paths
-        run: cd .. && python3 scripts/normalize-sonar-lcov.py backend/coverage/lcov.info backend
+        run: cd .. && python3 scripts/normalize-sonar-lcov.py backend
       - uses: actions/upload-artifact@v4
         with:
           name: cinehunt-backend-lcov
@@ -65,7 +65,7 @@ jobs:
       - name: Run Vitest V8 coverage
         run: npm run test:coverage -- --coverage.include='src/**/*.{ts,tsx}' --coverage.reporter=lcov --coverage.reporter=text-summary
       - name: Verify production source coverage and normalize paths
-        run: cd .. && python3 scripts/normalize-sonar-lcov.py admin-web/coverage/lcov.info admin-web
+        run: cd .. && python3 scripts/normalize-sonar-lcov.py admin-web
       - uses: actions/upload-artifact@v4
         with:
           name: cinehunt-web-lcov
