@@ -1,6 +1,23 @@
 import assert from 'node:assert/strict';
 
-const baseUrl = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000';
+// Lifecycle E2E creates real test orders; prohibit remote targets.
+const baseUrl = new URL(process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000');
+if (
+  baseUrl.protocol !== 'http:' ||
+  !new Set(['127.0.0.1', 'localhost', '[::1]']).has(baseUrl.hostname) ||
+  baseUrl.username || baseUrl.password || baseUrl.pathname !== '/' ||
+  baseUrl.search || baseUrl.hash
+) {
+  throw new Error('E2E_BASE_URL phải trỏ tới HTTP localhost của môi trường test riêng.');
+}
+function localTestUrl(path) {
+  if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//')) {
+    throw new Error('E2E request path không hợp lệ.');
+  }
+  const url = new URL(path, baseUrl);
+  if (url.origin !== baseUrl.origin) throw new Error('E2E không được truy cập host khác.');
+  return url;
+}
 
 const requiredEnv = [
   'E2E_CUSTOMER_EMAIL',
@@ -22,7 +39,8 @@ for (const name of requiredEnv) {
 }
 
 async function raw(path, options = {}) {
-  const response = await fetch(baseUrl + path, {
+  const response = await fetch(localTestUrl(path), {
+    redirect: 'error',
     method: options.method ?? 'GET',
     headers: {
       'Content-Type': 'application/json',
