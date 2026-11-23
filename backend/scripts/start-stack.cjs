@@ -90,7 +90,7 @@ try {
     !fs.existsSync(modelPath) &&
     isEnabled(env.RECOMMENDATION_BOOTSTRAP_MODEL, true)
   ) {
-    console.warn(`[stack] Chưa có model tại ${modelPath}. Tiến hành train lần đầu.`);
+    console.warn('[stack] Chưa có model recommendation. Tiến hành train lần đầu.');
     runSync(
       python,
       ['train.py'],
