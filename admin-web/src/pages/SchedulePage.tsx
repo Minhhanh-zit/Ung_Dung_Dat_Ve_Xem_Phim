@@ -43,7 +43,7 @@ export default function SchedulePage() {
   }, [reloadKey]);
 
   const movieMap = useMemo(() => new Map(movies.map((movie) => [movie.movie_id, movie])), [movies]);
-  const availableDates = useMemo(() => Array.from(new Set(showtimes.map((item) => item.showDate).filter(Boolean))).sort(), [showtimes]);
+  const availableDates = useMemo(() => Array.from(new Set(showtimes.map((item) => item.showDate).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [showtimes]);
   const activeDate = selectedDate ?? availableDates[0] ?? null;
 
   const byMovie = useMemo(() => {
