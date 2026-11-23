@@ -1,0 +1,4 @@
+# Input for the CI-only, SHA-256 hashed lock file.
+# Rebuild on Python 3.12/Linux using pip-compile --generate-hashes.
+-r requirements.txt
+coverage==7.13.3
