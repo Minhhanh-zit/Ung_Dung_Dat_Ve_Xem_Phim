@@ -23,6 +23,13 @@ const SeatItem: React.FC<SeatItemProps> = ({ seat, selected, onClick, disabled =
     if (!isDisabled) onClick();
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (isDisabled || (event.key !== 'Enter' && event.key !== ' ')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onClick();
+  };
+
   const getStatusClass = () => selected ? 'selected' : visualStatus.toLowerCase();
 
   return (
@@ -32,6 +39,8 @@ const SeatItem: React.FC<SeatItemProps> = ({ seat, selected, onClick, disabled =
       style={{ cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.85 : 1 }}
       title={getTooltip()}
       role="button"
+      tabIndex={isDisabled ? -1 : 0}
+      onKeyDown={handleKeyDown}
       aria-disabled={isDisabled}
       aria-label={`Ghế ${seat.rowName}${seat.seatNumber} - ${seat.status}`}
     >
