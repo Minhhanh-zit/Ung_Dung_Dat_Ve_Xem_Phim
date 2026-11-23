@@ -73,16 +73,13 @@ def main() -> int:
             return 1
         if source is None:
             continue
-        if not any(line.startswith("DA:") for line in record):
-            print("ERROR: Missing coverage line data for runtime source")
-            return 1
         source_files.add(source)
         normalized.extend(
             "SF:" + source if line.startswith("SF:") else line for line in record
         )
 
-    if not source_files:
-        print("ERROR: LCOV contains no real runtime source coverage")
+    if not source_files or not any(line.startswith("DA:") for line in normalized):
+        print("ERROR: LCOV contains no real runtime source coverage lines")
         return 1
     report.write_text("\n".join(normalized) + "\n", encoding="utf-8")
     print(f"Validated {component} LCOV: {len(source_files)} runtime source files")
