@@ -46,7 +46,7 @@ if [ "$MODE" = '--ui' ] || [ "$MODE" = '--all' ]; then
 fi
 if [ "$MODE" = '--api' ] || [ "$MODE" = '--all' ]; then
   run 'API read-only integration' '.' node scripts/cinehunt-api-smoke.cjs
-  run 'API anonymous security read-only' '.' node scripts/cinehunt-api-security-smoke.cjs
+  run 'API anonymous security read-only' '.' node scripts/cinehunt-authz-readonly-smoke.cjs
 fi
 printf '\nReport: %s\n' "$SUMMARY"
 if [ "$FAIL" -gt 0 ]; then
