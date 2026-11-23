@@ -28,7 +28,7 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - name: Install Backend dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Run existing Node tests with native LCOV reporter
         run: |
           mkdir -p coverage
@@ -62,7 +62,7 @@ jobs:
           cache: npm
           cache-dependency-path: admin-web/package-lock.json
       - name: Install Web dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Run Vitest V8 coverage
         run: npm run test:coverage -- --coverage.include='src/**/*.{ts,tsx}' --coverage.reporter=lcov --coverage.reporter=text-summary
       - name: Verify production source coverage and normalize paths
@@ -87,8 +87,8 @@ jobs:
           cache-dependency-path: ai/requirements.txt
       - name: Install AI dependencies and coverage
         run: |
-          python -m pip install -r ai/requirements.txt
-          python -m pip install coverage==7.13.3
+          python -m pip install --only-binary=:all: -r ai/requirements.txt
+          python -m pip install --only-binary=:all: coverage==7.13.3
       - name: Run existing AI smoke tests with coverage
         run: |
           python -m coverage run --source=ai ai/smoke_test.py
