@@ -17,6 +17,28 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  static-security:
+    name: Static security and syntax (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Check modified scripts without executing E2E or SQL
+        run: |
+          bash -n scripts/cinehunt-test-auto.sh
+          node --check backend/scripts/start-stack.cjs
+          node --check backend/test/e2e-critical-lifecycle.mjs
+      - name: Reject bcrypt hashes committed in legacy SQL reference
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          source = Path("database/reference/CineHunt_Database_V6_3_With_Sample_Data.sql").read_text()
+          if re.search(r'\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}', source):
+              raise SystemExit("BLOCKED: hardcoded bcrypt hash found in legacy SQL reference.")
+          print("PASS: No embedded bcrypt password hash in legacy SQL reference.")
+          PY
+
   backend:
     name: Backend NestJS
     runs-on: ubuntu-latest
