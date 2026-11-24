@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import type { User } from '../types';
-import type { ThemeMode } from '../cinehunt/ui';
+import type { ThemeMode } from '../cinehunt/themeTokens';
 
 /**
  * iOS/Android: SecureStore. Web: sessionStorage for sensitive data,
@@ -102,10 +102,26 @@ export function saveFavorites(ids: number[]) {
   return write(KEY_FAVORITES, encode(valid), false);
 }
 
+function asThemeMode(value: unknown): ThemeMode | null {
+  return value === 'dark' || value === 'light' ? value : null;
+}
+
+/**
+ * Theme được lưu dạng versioned `{version,data}`; vẫn đọc được dạng cũ
+ * (chuỗi thuần 'dark' | 'light'). Dữ liệu lỗi/không hợp lệ => Light mặc định.
+ */
 export async function loadTheme(): Promise<ThemeMode> {
-  return (await read(KEY_THEME, false)) === 'dark' ? 'dark' : 'light';
+  const raw = await read(KEY_THEME, false);
+  if (!raw) return 'light';
+  const legacy = asThemeMode(raw);
+  if (legacy) return legacy;
+  try {
+    return asThemeMode(decode(raw)) ?? 'light';
+  } catch {
+    return 'light';
+  }
 }
 
 export function saveTheme(mode: ThemeMode) {
-  return write(KEY_THEME, mode, false);
+  return write(KEY_THEME, encode(mode), false);
 }

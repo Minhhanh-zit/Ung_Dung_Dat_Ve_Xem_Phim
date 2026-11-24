@@ -2,9 +2,9 @@
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=10000 --fetch-retry-maxtimeout=60000 --fetch-timeout=300000
 COPY . .
-RUN npm run build && npm prune --omit=dev
+RUN rm -rf dist && find . -maxdepth 1 -name '*.tsbuildinfo' -delete && npm run build && test -f dist/main.js && npm prune --omit=dev
 
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production \

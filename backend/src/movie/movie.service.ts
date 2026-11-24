@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Movie, MovieStatus } from '../entities/movie.entity';
 import { Genre } from '../entities/genre.entity';
+import { CORE_CINEMA_NAMES } from '../common/catalog-scope';
 import { BookingOrder } from '../entities/booking-order.entity';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
@@ -28,7 +29,7 @@ export class MovieService {
     private readonly genreRepo: Repository<Genre>,
   ) {}
 
-  async findAll(query: MovieQueryDto) {
+  async findAll(query: MovieQueryDto, publicOnly = false) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const skip = (page - 1) * limit;
@@ -37,8 +38,13 @@ export class MovieService {
       .createQueryBuilder('movie')
       .leftJoinAndSelect('movie.genres', 'genre')
       .orderBy('movie.createdAt', 'DESC')
+      .addOrderBy('movie.movieId', 'DESC')
       .skip(skip)
       .take(limit);
+
+    if (publicOnly) {
+      qb.andWhere('movie.status IN (:...publicStatuses)', { publicStatuses: PUBLIC_STATUSES });
+    }
 
     if (query.search) {
       qb.andWhere('movie.title LIKE :search', { search: `%${query.search}%` });
@@ -61,6 +67,34 @@ export class MovieService {
       totalPages: Math.ceil(total / limit),
       items,
     };
+  }
+
+  // One public catalogue for Web and Mobile. Admin continues to use findAll.
+  async findCatalog(query: MovieQueryDto) {
+    const result = await this.findAll(query, true);
+    const ids = result.items.filter(m => m.status === MovieStatus.COMING_SOON).map(m => m.movieId);
+    const earlyIds = new Set<number>();
+    if (ids.length) {
+      const rows = await this.movieRepo.createQueryBuilder('movie')
+        .select('movie.movieId', 'movieId')
+        .where('movie.movieId IN (:...ids)', { ids })
+        .andWhere('movie.status = :coming', { coming: MovieStatus.COMING_SOON })
+        .andWhere(`EXISTS (
+          SELECT 1 FROM dbo.showtimes st
+          JOIN dbo.rooms r ON r.room_id = st.room_id
+          JOIN dbo.cinemas c ON c.cinema_id = r.cinema_id
+          WHERE st.movie_id = movie.movie_id AND st.status = 'OPEN'
+            AND r.status = 'ACTIVE' AND c.status = 'ACTIVE'
+            AND c.cinema_name IN (:...coreNames)
+            AND st.start_time > :now
+            AND CONVERT(date, DATEADD(hour, 7, st.start_time)) < movie.release_date
+        )`, { coreNames: CORE_CINEMA_NAMES, now: new Date(Date.now() + 15 * 60 * 1000) })
+        .getRawMany<{ movieId: number }>();
+      for (const row of rows) earlyIds.add(Number(row.movieId));
+    }
+    return { ...result, items: result.items.map(movie => ({
+      ...movie, hasEarlyShowtime: earlyIds.has(movie.movieId),
+    })) };
   }
 
   async findOne(id: number) {

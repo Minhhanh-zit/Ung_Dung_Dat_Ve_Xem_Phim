@@ -1,3 +1,4 @@
+import { isCouple, seatGroup } from '../../utils/coupleSeats'; // CINEHUNT_COUPLE_PAIR_V1
 import React, { useMemo, useState } from 'react';
 import type { SeatMapProps, GroupedSeats, SeatId } from '../../types/seat.types';
 import { UNSELECTABLE_STATUSES } from '../../types/seat.types';
@@ -41,7 +42,9 @@ const SeatMap: React.FC<SeatMapProps> = ({
     if (!seat || isDisabled(seat.id, seat.status)) return;
 
     const key = String(seat.id);
-    if (!selected.has(key) && selected.size >= maxSeats) {
+    const group=seatGroup(seats,seat);
+    if (isCouple(seat)&&group.length!==2)return;
+    if (!group.some(s=>selected.has(String(s.id))) && selected.size+group.length > maxSeats) {
       setWarning(`Bạn chỉ có thể chọn tối đa ${maxSeats} ghế`);
       return;
     }
@@ -49,6 +52,16 @@ const SeatMap: React.FC<SeatMapProps> = ({
     onSeatToggle?.(key);
   };
 
+  // CINEHUNT_SEAT120: actual prices, not guessed from the row number.
+  const priceFor = (kind: string) => {
+    const values = seats.filter(s=>{const type=String(s.type??'').toUpperCase();return (type.includes('COUPLE')?'couple':type.includes('VIP')?'vip':'standard')===kind;}).map(s=>Number(s.price)).filter(Number.isFinite);
+    if(!values.length)return '—';
+    const money=(n:number)=>n.toLocaleString('vi-VN')+' đ';
+    return Math.min(...values)===Math.max(...values)?money(values[0]):`${money(Math.min(...values))} – ${money(Math.max(...values))}`;
+  };
+  const totals=seats.filter(s=>isCouple(s)&&s.seatNumber%2===1).map(s=>seatGroup(seats,s)).filter(g=>g.length===2).map(g=>g.reduce((sum,s)=>sum+Number(s.price??0),0));
+  const money=(n:number)=>n.toLocaleString('vi-VN')+' đ';
+  const pairPrice=totals.length?(Math.min(...totals)===Math.max(...totals)?money(totals[0]):`${money(Math.min(...totals))} – ${money(Math.max(...totals))}`)+' / cặp':priceFor('couple')+' / chỗ (lịch cũ)';
   const stats = {
     available: seats.filter((s) => s.status === 'AVAILABLE').length,
     sold: seats.filter((s) => s.status === 'SOLD' || s.status === 'BOOKED').length,
@@ -69,6 +82,16 @@ const SeatMap: React.FC<SeatMapProps> = ({
         <p className="text-sm text-amber-500 mb-2" role="alert">{warning}</p>
       )}
 
+      {/* CINEHUNT_BETA_SEAT_V4 */}
+      {showLegend && <div className="ch-beta-legend">
+        <div><strong>Trạng thái</strong><div className="legend-items">
+          {[['available','Ghế trống'],['held','Đang được giữ'],['selected','Bạn đang chọn'],['sold','Đã bán'],['blocked','Bị khóa']].map(([cls,label])=><div key={cls} className="legend-item"><div className={`legend-color ${cls}`}/><span>{label}</span></div>)}
+        </div></div>
+        <div><strong>Giá vé</strong><div className="legend-items">
+          {([['standard','Ghế thường · A–C'],['vip','Ghế VIP · D–I'],['couple','Ghế đôi · J']] as const).map(([kind,label])=><div key={kind} className="legend-item"><div className={`legend-color available ch-beta-shape-${kind}`}/><span>{label}<br/><b>{kind==='couple'?pairPrice:priceFor(kind)}</b></span></div>)}
+        </div></div>
+      </div>}
+      <p className="ch-beta-note">Ghế đôi: chọn cả 2 chỗ liền nhau, giá theo cặp.</p>
       <div className="seat-map-container">
         <div className="screen-container">
           <div className="screen"><span>MÀN HÌNH</span></div>
@@ -83,34 +106,20 @@ const SeatMap: React.FC<SeatMapProps> = ({
             >
               <div className="row-label">{rowName}</div>
               <div className="seats-container">
-                {groupedSeats[rowName].map((seat) => (
-                  <SeatItem
-                    key={String(seat.id)}
-                    seat={seat}
-                    selected={isSelected(seat.id)}
-                    onClick={() => handleSeatClick(seat.id)}
-                    disabled={isDisabled(seat.id, seat.status)}
-                  />
-                ))}
+                {groupedSeats[rowName].map(seat=>{
+                  const group=seatGroup(seats,seat);if(group.length===2&&group[0].id!==seat.id)return null;
+                  const unavailable=group.find(s=>isDisabled(s.id,s.status));
+                  const complete=!isCouple(seat)||group.length===2;
+                  const visual={...seat,status:unavailable?.status??seat.status,price:group.reduce((sum,s)=>sum+Number(s.price??0),0)};
+                  return <SeatItem key={String(seat.id)} seat={visual} pairLabel={group.length===2?group.map(s=>`${s.rowName}${s.seatNumber}`).join('–'):undefined} selected={group.every(s=>isSelected(s.id))} onClick={()=>handleSeatClick(seat.id)} disabled={!complete||!!unavailable}/>;
+                })}
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {showLegend && (
-        <div className="seat-legend">
-          <div className="legend-title">Chú thích:</div>
-          <div className="legend-items">
-            {[['available', 'Trống'], ['selected', 'Đã chọn'], ['held', 'Đang giữ'], ['sold', 'Đã bán'], ['blocked', 'Bị khóa']].map(([cls, label]) => (
-              <div key={cls} className="legend-item">
-                <div className={`legend-color ${cls}`}></div>
-                <span>{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };

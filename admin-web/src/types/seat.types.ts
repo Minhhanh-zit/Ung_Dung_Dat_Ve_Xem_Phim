@@ -24,6 +24,7 @@ export interface SeatMapProps {
 }
 
 export interface SeatItemProps {
+  pairLabel?: string;
   seat: SeatDto;
   selected: boolean;
   onClick: () => void;

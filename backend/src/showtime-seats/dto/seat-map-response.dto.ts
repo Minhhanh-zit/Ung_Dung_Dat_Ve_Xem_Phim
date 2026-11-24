@@ -29,6 +29,8 @@ export interface SeatMapSeatDto {
 export interface SeatMapResponseDto {
   showtimeId: number;
   movieTitle: string | null;
+  durationMinutes?: number | null;
+  ageRating?: string | null;
   cinemaName: string | null;
   roomName: string | null;
   startTime: Date | null;

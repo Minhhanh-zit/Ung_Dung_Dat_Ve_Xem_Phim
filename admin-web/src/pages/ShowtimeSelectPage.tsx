@@ -84,7 +84,7 @@ export default function ShowtimeSelectPage() {
         if (signal.cancelled) return;
         setAllShowtimes(
           apiList
-            .filter((s) => s.status !== 'CANCELLED' && s.id > 0 && !isPast(s.startTime))
+            .filter((s) => s.status === 'OPEN' && s.id > 0 && !isPast(s.startTime))
             .map((s) => ({
               showtimeId: s.id,
               cinemaId: s.cinemaId ?? 0,

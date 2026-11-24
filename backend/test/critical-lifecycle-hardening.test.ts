@@ -47,6 +47,14 @@ test('releaseHold không nhả ghế nếu hold đã được booking xử lý',
 
       return null;
     },
+    // CINEHUNT_COUPLE_RELEASE_MOCK_V1
+    find: async (entity: unknown) => {
+      assert.equal(entity, SeatHold);
+      holdReadCount += 1;
+      assert.equal(holdReadCount, 2);
+      // Booking đã xử lý hold sau lần đọc ban đầu.
+      return [];
+    },
     update: async () => {
       throw new Error('Không được update hold stale');
     },
@@ -77,6 +85,7 @@ test('releaseHold không nhả ghế nếu hold đã được booking xử lý',
     (error: unknown) => error instanceof ConflictException,
   );
 
+  assert.equal(holdReadCount, 2);
   assert.equal(releaseSqlCalled, false);
 });
 

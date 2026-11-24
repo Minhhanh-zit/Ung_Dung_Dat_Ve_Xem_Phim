@@ -1,3 +1,4 @@
+import { completeCoupleSelection, couplePartner } from '../../showtime/couple-pair'; // CINEHUNT_COUPLE_PAIR_V1
 import {
   Injectable,
   BadRequestException,
@@ -30,11 +31,12 @@ export class SeatHoldService {
 
       const showtimeSeat = await queryRunner.manager.findOne(ShowtimeSeat, {
         where: { showtimeSeatId },
-        relations: ['showtime', 'showtime.movie', 'showtime.room', 'showtime.room.cinema', 'seat'],
+        relations: ['showtime', 'showtime.movie', 'showtime.room', 'showtime.room.cinema', 'seat', 'seat.seatType'],
         lock: { mode: 'pessimistic_write' },
       });
 
       if (!showtimeSeat) throw new NotFoundException('Ghế không tồn tại');
+      if (!completeCoupleSelection([showtimeSeat])) throw new BadRequestException('Ghế đôi phải được giữ cả cặp bằng hold-many');
 
       if (showtimeSeat.status !== 'AVAILABLE') {
         throw new BadRequestException('Ghế không còn trống');
@@ -105,7 +107,7 @@ export class SeatHoldService {
 
       const showtimeSeats = await queryRunner.manager.find(ShowtimeSeat, {
         where: { showtimeSeatId: In(showtimeSeatIds) },
-        relations: ['showtime', 'showtime.movie', 'showtime.room', 'showtime.room.cinema', 'seat'],
+        relations: ['showtime', 'showtime.movie', 'showtime.room', 'showtime.room.cinema', 'seat', 'seat.seatType'],
         lock: { mode: 'pessimistic_write' },
       });
 
@@ -120,6 +122,8 @@ export class SeatHoldService {
         throw new BadRequestException('Tất cả ghế phải thuộc cùng một suất chiếu');
       }
 
+      if (!completeCoupleSelection(showtimeSeats)) throw new BadRequestException('Vui lòng chọn đủ hai chỗ của mỗi ghế đôi');
+      if (showtimeSeats.length > 8) throw new BadRequestException('Tối đa 8 chỗ');
       const notAvailable = showtimeSeats.filter((seat) => seat.status !== 'AVAILABLE');
 
       if (notAvailable.length > 0) {
@@ -299,40 +303,35 @@ export class SeatHoldService {
         throw new NotFoundException('Không tìm thấy hold hợp lệ');
       }
 
-      // Lock order phải giống createBooking: seat -> hold.
-      const lockedSeat = await queryRunner.manager.findOne(ShowtimeSeat, {
-        where: { showtimeSeatId: snapshot.showtimeSeatId },
-        lock: { mode: 'pessimistic_write' },
+      const first = await queryRunner.manager.findOne(ShowtimeSeat, {
+        where: { showtimeSeatId: snapshot.showtimeSeatId }, relations: ['seat', 'seat.seatType'],
       });
-
-      if (!lockedSeat) {
-        throw new NotFoundException('Ghế của hold không còn tồn tại');
+      if (!first) throw new NotFoundException('Ghế của hold không còn tồn tại');
+      const ids = [first.showtimeSeatId];
+      const couple = first.seat?.seatType?.typeCode === 'CH_COUPLE';
+      if (couple) {
+        const partner = await queryRunner.manager.findOne(ShowtimeSeat, {
+          where: { showtimeId: first.showtimeId, seat: { seatRow: first.seat.seatRow, seatNumber: couplePartner(first.seat.seatNumber), seatType: { typeCode: 'CH_COUPLE' } } },
+          relations: ['seat', 'seat.seatType'],
+        });
+        if (partner) ids.push(partner.showtimeSeatId);
       }
-
-      const hold = await queryRunner.manager.findOne(SeatHold, {
-        where: { holdId, userId, status: SeatHoldStatus.ACTIVE },
-        lock: { mode: 'pessimistic_write' },
+      // Same seat -> hold locking order as booking; never release somebody else's hold.
+      for (const id of ids.sort((a,b)=>a-b)) {
+        const locked = await queryRunner.manager.findOne(ShowtimeSeat, { where: { showtimeSeatId: id }, lock: { mode: 'pessimistic_write' } });
+        if (!locked) throw new NotFoundException('Ghế không còn tồn tại');
+      }
+      const holds = await queryRunner.manager.find(SeatHold, {
+        where: { showtimeSeatId: In(ids), userId, status: SeatHoldStatus.ACTIVE },
       });
-
-      if (!hold) {
-        throw new ConflictException(
-          'Hold đã được xử lý bởi request khác, không thể nhả ghế',
-        );
-      }
-
-      const cancelled = await queryRunner.manager.update(
-        SeatHold,
-        { holdId, userId, status: SeatHoldStatus.ACTIVE },
-        { status: SeatHoldStatus.CANCELLED, releasedAt: new Date() },
-      );
-
-      if ((cancelled.affected ?? 0) !== 1) {
-        throw new ConflictException(
-          'Hold đã thay đổi trạng thái trong lúc giải phóng',
-        );
-      }
-
-      const releasedRows = (await queryRunner.manager.query(
+      if (!holds.some(h=>String(h.holdId)===String(holdId))) throw new ConflictException('Hold đã được xử lý');
+      let releasedSeat = false;
+      for (const hold of holds.sort((a,b)=>Number(a.showtimeSeatId)-Number(b.showtimeSeatId))) {
+        const cancelled = await queryRunner.manager.update(SeatHold,
+          { holdId: hold.holdId, userId, status: SeatHoldStatus.ACTIVE },
+          { status: SeatHoldStatus.CANCELLED, releasedAt: new Date() });
+        if ((cancelled.affected ?? 0) !== 1) throw new ConflictException('Hold đã thay đổi trạng thái');
+        const releasedRows = (await queryRunner.manager.query(
         `
           UPDATE ss
           SET
@@ -363,12 +362,16 @@ export class SeatHoldService {
         [hold.showtimeSeatId, userId],
       )) as Array<{ showtime_seat_id: number }>;
 
+        if (couple && releasedRows.length !== 1) throw new ConflictException('Không thể nhả đủ cặp ghế');
+        if (String(hold.holdId)===String(holdId)) releasedSeat = releasedRows.length === 1;
+      }
+
       await queryRunner.commitTransaction();
 
       return {
         success: true,
         holdId,
-        releasedSeat: releasedRows.length === 1,
+        releasedSeat,
       };
     } catch (error) {
       if (queryRunner.isTransactionActive) {

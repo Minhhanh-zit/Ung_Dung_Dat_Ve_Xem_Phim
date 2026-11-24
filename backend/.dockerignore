@@ -11,3 +11,5 @@ uploads
 *.bak
 *.mdf
 *.ldf
+*.tsbuildinfo
+**/*.tsbuildinfo

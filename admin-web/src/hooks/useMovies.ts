@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import type { Genre, Movie } from '../types/movie';
 import {
   getMovies,
+  getPublicMovies,
   createMovie,
   updateMovie,
   deleteMovie,
@@ -14,12 +15,13 @@ const msgOf = (err: unknown, fallback: string) =>
 export interface UseMoviesOptions {
   autoFetch?: boolean;
   withGenres?: boolean;
+  publicCatalog?: boolean;
   /* Tham số truyền cho lần fetch đầu tiên */
   params?: { status?: Movie['status']; page?: number; limit?: number };
 }
 
 export const useMovies = (options: UseMoviesOptions = {}) => {
-  const { autoFetch = true, withGenres = false, params: initialParams } = options;
+  const { autoFetch = true, withGenres = false, publicCatalog = false, params: initialParams } = options;
   const [movies, setMovies] = useState<Movie[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
   const [total, setTotal] = useState(0);
@@ -31,7 +33,7 @@ export const useMovies = (options: UseMoviesOptions = {}) => {
       setLoading(true);
       setError(null);
       try {
-        const result = await getMovies(params);
+        const result = publicCatalog ? await getPublicMovies() : await getMovies(params);
         setMovies(result.items);
         setTotal(result.total);
       } catch (err) {
@@ -40,7 +42,7 @@ export const useMovies = (options: UseMoviesOptions = {}) => {
         setLoading(false);
       }
     },
-    [],
+    [publicCatalog],
   );
 
   const fetchGenres = useCallback(async () => {
@@ -103,6 +105,13 @@ export const useMovies = (options: UseMoviesOptions = {}) => {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFetch, withGenres, fetchMovies, fetchGenres]);
+
+  useEffect(() => {
+    if (!publicCatalog || !autoFetch) return;
+    const refresh = () => { if (!document.hidden) void fetchMovies(); };
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
+  }, [publicCatalog, autoFetch, fetchMovies]);
 
   return {
     movies,

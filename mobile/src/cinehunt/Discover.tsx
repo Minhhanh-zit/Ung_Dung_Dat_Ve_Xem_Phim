@@ -2,8 +2,11 @@ import {useCallback,useEffect,useMemo,useState} from 'react';
 import {Image,Linking,Pressable,ScrollView,Text,View,useWindowDimensions} from 'react-native';
 import * as Location from 'expo-location';
 import {api,errorMessage} from '../services/apiClient';
-import {Button,C,FilmArt,GlowPanel,Kicker,Loader,Notice,S,SectionHeading,SimpleScroll} from './ui'; // CINEHUNT_FLOATING_AI_V1
+import {Button,FilmArt,GlowPanel,Kicker,Loader,Notice,SectionHeading,SimpleScroll} from './ui'; // CINEHUNT_FLOATING_AI_V1
+import {AppIcon} from './icons';
+import {useCineHuntTheme} from './theme';
 import type {Movie,Showtime} from '../types';
+import {loadPublicCatalog} from './publicCatalog';
 import {isCoreCinema,scopeWard,sortScopeWards} from './cinemaScope';
 import CinemaSchedule from './CinemaSchedule';
 
@@ -11,6 +14,7 @@ type Cinema={cinemaId:number;cinemaName:string;address?:string;latitude?:number|
 type Combo={comboId:number;name?:string;comboName?:string;price?:number|string};
 type Props={token:string|null;favorites:number[];onOpen:(m:Movie)=>void;onAuth:()=>void;onSeats:(s:Showtime)=>void};
 export default function Discover({token,favorites,onOpen,onAuth,onSeats}:Props){
+  const {C,S}=useCineHuntTheme();
   const {width}=useWindowDimensions();
   const posterSize=Math.max(85,Math.min(125,Math.floor((width-40)*.484)-25));
   const [recommend,setRecommend]=useState<Movie[]>([]);const [source,setSource]=useState('');
@@ -29,7 +33,7 @@ export default function Discover({token,favorites,onOpen,onAuth,onSeats}:Props){
       const [cinemaResult,comboResult,movieResult]=await Promise.allSettled([
         api<Cinema[]>('/cinemas'),
         api<Combo[]>('/concession-combos'),
-        api<{items:Movie[]}>('/movies?page=1&limit=50'),
+        loadPublicCatalog(),
       ]);
       const failures:string[]=[];
       if(cinemaResult.status==='fulfilled'&&Array.isArray(cinemaResult.value)){
@@ -119,7 +123,7 @@ export default function Discover({token,favorites,onOpen,onAuth,onSeats}:Props){
   return <SimpleScroll refreshing={loading&&cinemas.length>0} onRefresh={()=>void load()}>
     <View style={{marginTop:7,marginBottom:16}}><Kicker>EXPLORE · DISCOVER</Kicker><Text style={[S.title,{fontSize:32,marginTop:8}]}>Khám phá<Text style={{color:C.purple}}> điều mới.</Text></Text><Text style={[S.muted,{marginTop:8}]}>Một thế giới phim và rạp chiếu dành riêng cho bạn.</Text></View>
     <GlowPanel from="#3A2B75" to="#0C3045" style={{marginBottom:10}}>
-      <View style={{flexDirection:'row',alignItems:'center',gap:15}}><View style={{width:54,height:54,borderRadius:20,backgroundColor:'#FFFFFF20',borderWidth:1,borderColor:'#FFFFFF35',alignItems:'center',justifyContent:'center'}}><Text style={{color:C.lavender,fontSize:28}}>✦</Text></View><View style={{flex:1}}><Kicker color={C.heroCyan}>CINEHUNT DISCOVERY</Kicker><Text style={{color:C.hero,fontSize:19,fontWeight:'900',marginTop:6}}>Hôm nay xem gì?</Text><Text style={{color:'#DAD7EF',fontSize:12,marginTop:4}}>Tìm phim hay, rạp gần và combo hấp dẫn.</Text></View></View>
+      <View style={{flexDirection:'row',alignItems:'center',gap:15}}><View style={{width:54,height:54,borderRadius:20,backgroundColor:'#FFFFFF20',borderWidth:1,borderColor:'#FFFFFF35',alignItems:'center',justifyContent:'center'}}><AppIcon name="assistant" size={28} color={C.lavender}/></View><View style={{flex:1}}><Kicker color={C.heroCyan}>CINEHUNT DISCOVERY</Kicker><Text style={{color:C.hero,fontSize:19,fontWeight:'900',marginTop:6}}>Hôm nay xem gì?</Text><Text style={{color:'#DAD7EF',fontSize:12,marginTop:4}}>Tìm phim hay, rạp gần và combo hấp dẫn.</Text></View></View>
     </GlowPanel>
     {loading&&<Loader/>}{!!error&&<Notice text={error} bad/>}
     <View style={{flexDirection:'row',gap:10,marginTop:16,marginBottom:14}}>
@@ -133,13 +137,13 @@ export default function Discover({token,favorites,onOpen,onAuth,onSeats}:Props){
         }}
         style={{flex:1,minHeight:92,borderWidth:1,borderColor:activeTool==='gps'?C.purple:C.stroke,backgroundColor:activeTool==='gps'?C.panel2:C.panel,borderRadius:19,paddingVertical:14,paddingHorizontal:10,alignItems:'center',justifyContent:'center',gap:7}}
       >
-        <Text style={{fontSize:25}}>📍</Text>
+        <AppIcon name="pin" size={26} color={C.purple}/>
         <Text style={{color:C.white,fontWeight:'800',fontSize:13,textAlign:'center'}}>Rạp gần tôi</Text>
       </Pressable>
     </View>
     {activeTool==='gps'&&<View style={{marginBottom:16}}>
       <SectionHeading title="Rạp quanh bạn · khoảng cách GPS chỉ để sắp xếp" subtitle="Danh sách rạp CineHunt lấy từ hệ thống"/>
-      <View style={{marginBottom:14}}><Button title="◎  Cập nhật vị trí GPS" kind="outline" onPress={()=>void locateCinemas()}/></View>
+      <View style={{marginBottom:14}}><Button title="Cập nhật vị trí GPS" icon="locate" kind="outline" onPress={()=>void locateCinemas()}/></View>
       {!!geoError&&<Notice text={geoError} bad/>}
       {!loading&&!geoError&&cinemaFetchStatus==='ready'&&cinemas.length===0&&<Notice text="Hệ thống chưa có rạp đang hoạt động để hiển thị."/>}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:12,paddingVertical:6,paddingRight:18}}>
@@ -148,14 +152,14 @@ export default function Discover({token,favorites,onOpen,onAuth,onSeats}:Props){
           return <Pressable key={String(cinema.cinemaId)} accessibilityRole="button" accessibilityLabel={`Xem vị trí ${cinema.cinemaName}`} onPress={()=>void openCinemaMap(cinema)} style={{width:230,borderRadius:20,backgroundColor:C.panel,borderWidth:1,borderColor:C.stroke,overflow:'hidden'}}>
             {image?<Image source={{uri:image}} resizeMode="cover" style={{height:120,width:'100%'}}/>:
               <GlowPanel from="#43327B" to="#183D58" style={{height:120,borderRadius:0,justifyContent:'center',alignItems:'center'}}>
-                <Text style={{fontSize:31,color:C.lavender}}>◈</Text>
+                <AppIcon name="building" size={32} color={C.lavender}/>
                 <Text style={{color:C.hero,fontWeight:'800',fontSize:13,marginTop:7}}>CINEHUNT CINEMA</Text>
               </GlowPanel>}
             <View style={{padding:13,gap:6}}>
               <Text numberOfLines={1} style={{fontSize:17,color:C.white,fontWeight:'900'}}>{cinema.cinemaName}</Text>
               <Text numberOfLines={2} style={{fontSize:12,color:C.muted,minHeight:30}}>{scopeWard(cinema)} · {cinema.address||'Chưa có địa chỉ'}</Text>
               <Text style={{fontSize:13,color:C.cyan,fontWeight:'800'}}>{distanceText(cinema)}</Text>
-              <Text style={{fontSize:12,color:C.purple,fontWeight:'800'}}>Chỉ đường  ↗</Text>
+              <View style={{flexDirection:'row',alignItems:'center',gap:6}}><AppIcon name="navigate" size={14} color={C.purple}/><Text style={{fontSize:12,color:C.purple,fontWeight:'800'}}>Chỉ đường</Text></View>
             </View>
           </Pressable>;
         })}
@@ -165,13 +169,13 @@ export default function Discover({token,favorites,onOpen,onAuth,onSeats}:Props){
         <Pressable accessibilityRole="button" accessibilityLabel={`Khu vực ${area}, ${list.length} rạp`} accessibilityState={{expanded:expandedArea===area}} onPress={()=>setExpandedArea(expandedArea===area?null:area)} style={{flexDirection:'row',alignItems:'center',paddingHorizontal:16,paddingVertical:17,gap:10}}>
           <Text style={{flex:1,color:C.white,fontSize:16,fontWeight:'700'}}>{area}</Text>
           <Text style={{color:C.cyan,fontWeight:'900',fontSize:15}}>{list.length}</Text>
-          <Text style={{color:C.purple,fontWeight:'900',fontSize:18}}>{expandedArea===area?'⌃':'⌄'}</Text>
+          <AppIcon name={expandedArea===area?'chevronUp':'chevronDown'} size={20} color={C.purple}/>
         </Pressable>
         {expandedArea===area&&<View style={{paddingHorizontal:14,paddingBottom:12,borderTopWidth:1,borderTopColor:C.stroke}}>
           {list.map(cinema=><Pressable key={String(cinema.cinemaId)} accessibilityRole="button" onPress={()=>void openCinemaMap(cinema)} style={{paddingVertical:13,borderBottomWidth:1,borderBottomColor:C.stroke,flexDirection:'row',alignItems:'center',gap:12}}>
-            <Text style={{fontSize:21,color:C.purple}}>⌖</Text>
+            <AppIcon name="pin" size={21} color={C.purple}/>
             <View style={{flex:1}}><Text style={{color:C.white,fontWeight:'800',fontSize:14}}>{cinema.cinemaName}</Text><Text style={{color:C.muted,fontSize:11,marginTop:5}}>{cinema.address||'Chưa có địa chỉ'}</Text><Text style={{color:C.cyan,fontSize:11,marginTop:4}}>{distanceText(cinema)}</Text></View>
-            <Text style={{color:C.purple,fontSize:12,fontWeight:'800'}}>Chỉ đường ↗</Text>
+            <View style={{flexDirection:'row',alignItems:'center',gap:5}}><AppIcon name="navigate" size={14} color={C.purple}/><Text style={{color:C.purple,fontSize:12,fontWeight:'800'}}>Chỉ đường</Text></View>
           </Pressable>)}
         </View>}
       </View>)}
@@ -182,18 +186,18 @@ export default function Discover({token,favorites,onOpen,onAuth,onSeats}:Props){
       {source&&!fallback&&<Text style={[S.muted,{marginBottom:10,fontSize:11}]}>Kết quả phụ thuộc vào dữ liệu tương tác hiện có.</Text>}
       <View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:12}}>
         {recommend.slice(0,8).map(m=><Pressable key={m.movieId} onPress={()=>onOpen(m)} accessibilityRole="button" style={{width:'48.4%',padding:11,borderRadius:18,borderWidth:1,borderColor:C.stroke,backgroundColor:C.panel}}>
-          <View style={{alignItems:'center'}}><FilmArt movie={m} size={posterSize}/></View><Text style={{color:C.white,fontWeight:'800',marginTop:10,fontSize:13.5,minHeight:38}} numberOfLines={2}>{m.title}</Text><Text style={{color:C.cyan,fontSize:11,marginTop:7,fontWeight:'800'}}>Xem chi tiết  ↗</Text>
+          <View style={{alignItems:'center'}}><FilmArt movie={m} size={posterSize}/></View><Text style={{color:C.white,fontWeight:'800',marginTop:10,fontSize:13.5,minHeight:38}} numberOfLines={2}>{m.title}</Text><View style={{flexDirection:'row',alignItems:'center',gap:5,marginTop:7}}><Text style={{color:C.cyan,fontSize:11,fontWeight:'800'}}>Xem chi tiết</Text><AppIcon name="external" size={12} color={C.cyan}/></View>
         </Pressable>)}
       </View>
       {!loading&&!recommend.length&&<Notice text="Chưa có gợi ý phù hợp. Bạn có thể chọn một bộ phim ở mục Phim."/>}
     </>}
     <SectionHeading title="Phim yêu thích" subtitle="Được lưu trong phiên đang mở"/>
-    {favoriteMovies.length?favoriteMovies.map(m=><Pressable key={m.movieId} onPress={()=>onOpen(m)} style={[S.card,{flexDirection:'row',alignItems:'center',gap:12}]}><FilmArt movie={m} size={60}/><View style={{flex:1}}><Text style={{color:C.white,fontWeight:'800'}}>{m.title}</Text><Text style={{color:C.purple,fontSize:12,marginTop:8}}>♥  Xem phim</Text></View></Pressable>):<View style={[S.card,{paddingVertical:24,alignItems:'center'}]}><Text style={{color:C.red,fontSize:25}}>♡</Text><Text style={[S.muted,{textAlign:'center',marginTop:7}]}>Chạm biểu tượng trái tim tại một bộ phim để lưu lại.</Text></View>}
+    {favoriteMovies.length?favoriteMovies.map(m=><Pressable key={m.movieId} onPress={()=>onOpen(m)} style={[S.card,{flexDirection:'row',alignItems:'center',gap:12}]}><FilmArt movie={m} size={60}/><View style={{flex:1}}><Text style={{color:C.white,fontWeight:'800'}}>{m.title}</Text><View style={{flexDirection:'row',alignItems:'center',gap:6,marginTop:8}}><AppIcon name="heart" size={14} color={C.purple} filled/><Text style={{color:C.purple,fontSize:12}}>Xem phim</Text></View></View></Pressable>):<View style={[S.card,{paddingVertical:24,alignItems:'center'}]}><AppIcon name="heart" size={26} color={C.red}/><Text style={[S.muted,{textAlign:'center',marginTop:7}]}>Chạm biểu tượng trái tim tại một bộ phim để lưu lại.</Text></View>}
     <SectionHeading title="Combo bắp nước" subtitle="Chọn thêm khi đặt vé"/>
     {combos.map((co,i)=><View key={co.comboId} style={[S.card,{flexDirection:'row',alignItems:'center',gap:13}]}>
-      <View style={{width:56,height:56,borderRadius:17,backgroundColor:i%2===0?C.iconA:C.iconB,alignItems:'center',justifyContent:'center'}}><Text style={{fontSize:27}}>🍿</Text></View>
+      <View style={{width:56,height:56,borderRadius:17,backgroundColor:i%2===0?C.iconA:C.iconB,alignItems:'center',justifyContent:'center'}}><AppIcon name="popcorn" size={28} color={C.purple}/></View>
       <View style={{flex:1}}><Text style={{color:C.white,fontWeight:'900',fontSize:15}}>{co.comboName||co.name||`Combo #${co.comboId}`}</Text><Text style={{color:C.green,fontWeight:'900',fontSize:16,marginTop:7}}>{Number(co.price||0).toLocaleString('vi-VN')}đ</Text></View>
     </View>)}
-    <View style={{marginTop:13}}><Button title="↻  Làm mới trang khám phá" kind="outline" disabled={loading} onPress={()=>void load()}/></View>
+    <View style={{marginTop:13}}><Button title="Làm mới trang khám phá" icon="refresh" kind="outline" disabled={loading} onPress={()=>void load()}/></View>
   </SimpleScroll>;
 }

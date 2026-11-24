@@ -1,11 +1,13 @@
 import {useEffect,useState} from 'react';
 import {Pressable, StatusBar, Text, View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {SafeAreaView,useSafeAreaInsets} from 'react-native-safe-area-context';
 import type {Movie, Screen, Showtime, Tab, User} from '../types';
 import {ApiError, api, configureSessionRefresh} from '../services/apiClient';
 import {refreshNativeAccessToken,subscribeNativeTokenChanges} from '../services/authSession';
-import {loadFavorites, loadSession, loadTheme, saveFavorites, saveSession, saveTheme, saveRefreshToken} from '../store/persist';
-import {C, S, applyTheme} from './ui';
+import {loadFavorites, loadSession, saveFavorites, saveSession, saveRefreshToken} from '../store/persist';
+import {ThemeToggle} from './ui';
+import {AppIcon, type IconName} from './icons';
+import {ThemeTransitionVeil, useCineHuntTheme} from './theme';
 import Movies from './Movies';
 import SeatFlow from './SeatFlow';
 import BookingView from './BookingView';
@@ -14,17 +16,17 @@ import Discover from './Discover';
 import ChatAssistant from './ChatAssistant'; // CINEHUNT_FLOATING_AI_V1
 import Account from './Account';
 
-const TABS: {id:Tab;glyph:string;label:string}[]=[
-  {id:'movies',glyph:'◉',label:'Phim'},
-  {id:'discover',glyph:'✦',label:'Khám phá'},
-  {id:'orders',glyph:'▣',label:'Đơn & vé'},
-  {id:'account',glyph:'♙',label:'Tài khoản'},
+const TABS: {id:Tab;icon:IconName;label:string}[]=[
+  {id:'movies',icon:'movies',label:'Phim'},
+  {id:'discover',icon:'discover',label:'Khám phá'},
+  {id:'orders',icon:'tickets',label:'Đơn & vé'},
+  {id:'account',icon:'account',label:'Tài khoản'},
 ];
 export default function CineHuntApp(){
   const [chatOpen,setChatOpen]=useState(false);
   const [ready,setReady]=useState(false);
-  const [dark,setDark]=useState(false);
-  applyTheme(dark?'dark':'light');
+  const {C,S,isDark}=useCineHuntTheme();
+  const insets=useSafeAreaInsets();
   const [tab,setTab]=useState<Tab>('movies');
   const [screen,setScreen]=useState<Screen>('main');
   const [token,setToken]=useState<string|null>(null);
@@ -44,13 +46,13 @@ export default function CineHuntApp(){
     configureSessionRefresh(refreshNativeAccessToken);
     return ()=>{configureSessionRefresh(null);unsubscribe()};
   },[]);
-  // Khôi phục theme, yêu thích và phiên đăng nhập đã lưu khi mở app.
+  // Khôi phục yêu thích và phiên đăng nhập đã lưu khi mở app (theme do ThemeProvider khôi phục).
   useEffect(()=>{
     let cancelled=false;
     (async()=>{
-      const [theme,favs,session]=await Promise.all([loadTheme(),loadFavorites(),loadSession()]);
+      const [favs,session]=await Promise.all([loadFavorites(),loadSession()]);
       if(cancelled)return;
-      setDark(theme==='dark');setFavorites(favs);
+      setFavorites(favs);
       if(session){
         try{
           const me=await api<User>('/users/me',{token:session.token});
@@ -70,7 +72,6 @@ export default function CineHuntApp(){
   },[]);
   useEffect(()=>{if(ready)void saveSession(token&&user?{token,user}:null)},[ready,token,user]);
   useEffect(()=>{if(ready)void saveFavorites(favorites)},[ready,favorites]);
-  useEffect(()=>{if(ready)void saveTheme(dark?'dark':'light')},[ready,dark]);
   function requestAuth(back:Screen){setReturnScreen(back);setScreen('auth')}
   function setLogin(nextToken:string,nextUser:User){setToken(nextToken);setUser(nextUser);setScreen(returnScreen)}
   function logout(){void saveRefreshToken(null);setToken(null);setUser(null);setScreen('main');setTab('account')}
@@ -87,19 +88,17 @@ export default function CineHuntApp(){
     else setScreen('main');
   }
   if(!ready)return <View style={{flex:1,backgroundColor:C.bg}}/>;
-  return <SafeAreaView style={S.screen} edges={['top','left','right','bottom']}>
-    <StatusBar barStyle={dark?'light-content':'dark-content'}/>
+  return <SafeAreaView style={S.screen} edges={isHome?['top','left','right']:['top','left','right','bottom']}>
+    <StatusBar barStyle={isDark?'light-content':'dark-content'}/>
     <View style={{height:65,paddingHorizontal:21,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderBottomWidth:1,borderBottomColor:C.line}}>
       <Pressable accessibilityRole="button" onPress={()=>selectTab('movies')} style={{flexDirection:'row',alignItems:'center',gap:9}}>
-        <View style={{width:30,height:30,borderRadius:10,alignItems:'center',justifyContent:'center',backgroundColor:C.logoBg,borderWidth:1,borderColor:C.logoLine}}><Text style={{color:C.brand,fontWeight:'900',fontSize:15}}>✦</Text></View>
+        <View style={{width:30,height:30,borderRadius:10,alignItems:'center',justifyContent:'center',backgroundColor:C.logoBg,borderWidth:1,borderColor:C.logoLine}}><AppIcon name="assistant" size={17} color={C.brand}/></View>
         <View><Text style={{fontSize:19,color:C.brand,fontWeight:'900',letterSpacing:1.1}}>CINEHUNT</Text><Text style={{color:C.soft,fontSize:8,letterSpacing:3.2,fontWeight:'800'}}>CINEMA EXPERIENCE</Text></View>
       </Pressable>
       <View style={{flexDirection:'row',alignItems:'center',gap:10}}>
-      <Pressable accessibilityRole="switch" accessibilityState={{checked:dark}} accessibilityLabel={dark?'Chuyển sang giao diện sáng':'Chuyển sang giao diện tối'} onPress={()=>setDark(v=>!v)} style={{width:58,height:32,borderRadius:16,borderWidth:1,borderColor:C.avatarLine,backgroundColor:C.avatarBg,justifyContent:'center',paddingHorizontal:3}}>
-        <View style={{width:24,height:24,borderRadius:12,backgroundColor:C.purple,alignItems:'center',justifyContent:'center',alignSelf:dark?'flex-end':'flex-start',shadowColor:C.glow,shadowOpacity:.6,shadowRadius:8,shadowOffset:{width:0,height:0}}}><Text style={{fontSize:13,color:C.bg}}>{dark?'☾':'☀'}</Text></View>
-      </Pressable>
-      {isHome?<Pressable accessibilityRole="button" accessibilityLabel="Mở tài khoản" onPress={()=>selectTab('account')} style={{width:39,height:39,borderRadius:20,backgroundColor:C.avatarBg,borderWidth:1,borderColor:C.avatarLine,alignItems:'center',justifyContent:'center'}}><Text style={{color:C.purple,fontSize:18}}>{token?'♙':'○'}</Text></Pressable>
-      :<Pressable accessibilityRole="button" onPress={goBack} style={{borderWidth:1,borderColor:C.stroke,backgroundColor:C.panel,borderRadius:16,paddingVertical:10,paddingHorizontal:13}}><Text style={{color:C.white,fontWeight:'700',fontSize:12}}>‹  Quay lại</Text></Pressable>}
+      <ThemeToggle/>
+      {isHome?<Pressable accessibilityRole="button" accessibilityLabel="Mở tài khoản" onPress={()=>selectTab('account')} style={{width:39,height:39,borderRadius:20,backgroundColor:C.avatarBg,borderWidth:1,borderColor:C.avatarLine,alignItems:'center',justifyContent:'center'}}><AppIcon name={token?'account':'user'} size={21} color={C.purple}/></Pressable>
+      :<Pressable accessibilityRole="button" accessibilityLabel="Quay lại" onPress={goBack} hitSlop={6} style={{minHeight:44,flexDirection:'row',alignItems:'center',gap:6,borderWidth:1,borderColor:C.stroke,backgroundColor:C.panel,borderRadius:16,paddingVertical:10,paddingHorizontal:13}}><AppIcon name="back" size={16} color={C.white}/><Text style={{color:C.white,fontWeight:'700',fontSize:12}}>Quay lại</Text></Pressable>}
       </View>
     </View>
     <View style={{flex:1}}>
@@ -108,7 +107,7 @@ export default function CineHuntApp(){
       {screen==='main'&&tab==='orders'&&<Orders token={token} revision={ordersRevision} onOpen={openBooking} onAuth={()=>requestAuth('main')}/>}
       {screen==='main'&&tab==='account'&&<Account token={token} user={user} onLogin={(t,u)=>{setToken(t);setUser(u)}} onLogout={logout}/>}
       {screen==='detail'&&movie&&<Movies mode="detail" selectedMovie={movie} token={token} favorites={favorites} onToggleFav={toggleFav} onOpen={()=>{}} onSeats={showSeats} onAuth={()=>requestAuth('detail')}/>}
-      {screen==='seats'&&showtime&&<SeatFlow token={token} user={user} showtime={showtime} onAuth={()=>requestAuth('seats')} onBooking={openBooking}/>}
+      {screen==='seats'&&showtime&&<SeatFlow token={token} user={user} showtime={showtime} onAuth={()=>requestAuth('seats')} onBooking={openBooking} onBack={goBack}/>}
       {screen==='booking'&&bookingId&&<BookingView bookingId={bookingId} token={token} onAuth={()=>requestAuth('booking')} onCancelled={()=>{setOrdersRevision(v=>v+1);setScreen('main');setTab('orders')}} onTickets={()=>setScreen('tickets')}/>}
       {screen==='tickets'&&bookingId&&<BookingView bookingId={bookingId} token={token} ticketsOnly onAuth={()=>requestAuth('tickets')} onCancelled={()=>{setScreen('main');setTab('orders')}} onTickets={()=>{}}/>}
       {screen==='auth'&&<Account forceAuth token={token} user={user} onLogin={setLogin} onLogout={logout}/>}
@@ -116,17 +115,18 @@ export default function CineHuntApp(){
         style={{position:'absolute',right:17,bottom:16,zIndex:30,width:56,height:56,borderRadius:28,
           backgroundColor:C.purple,borderWidth:2,borderColor:C.lavender,alignItems:'center',justifyContent:'center',
           shadowColor:'#000',shadowOpacity:.35,shadowOffset:{width:0,height:5},shadowRadius:12,elevation:9}}>
-        <Text style={{fontSize:29,color:C.bg,fontWeight:'900'}}>✦</Text>
+        <AppIcon name="assistant" size={27} color={C.bg} strokeWidth={2.3}/>
       </Pressable>}
     </View>
-    {isHome&&<View style={{flexDirection:'row',backgroundColor:C.tabBg,borderTopWidth:1,borderTopColor:C.tabLine,paddingTop:8,paddingBottom:6,paddingHorizontal:9}}>
-      {TABS.map(item=><Pressable key={item.id} accessibilityRole="tab" accessibilityState={{selected:tab===item.id}} onPress={()=>selectTab(item.id)} style={{flex:1,alignItems:'center',justifyContent:'center',paddingVertical:7,gap:3}}>
+    {isHome&&<View style={{flexDirection:'row',backgroundColor:C.tabBg,borderTopWidth:1,borderTopColor:C.tabLine,paddingTop:8,paddingBottom:6+insets.bottom,paddingHorizontal:9}}>
+      {TABS.map(item=><Pressable key={item.id} accessibilityRole="tab" accessibilityLabel={item.label} accessibilityState={{selected:tab===item.id}} onPress={()=>selectTab(item.id)} style={{flex:1,alignItems:'center',justifyContent:'center',paddingVertical:7,gap:3}}>
         {tab===item.id&&<View style={{position:'absolute',top:-9,width:33,height:3,borderRadius:5,backgroundColor:C.purple}}/>}
-        <Text style={{fontSize:23,color:tab===item.id?C.purple:C.soft,fontWeight:'700'}}>{item.glyph}</Text>
+        <AppIcon name={item.icon} size={24} color={tab===item.id?C.purple:C.soft} strokeWidth={tab===item.id?2.4:1.9}/>
         <Text numberOfLines={1} style={{fontSize:10.5,fontWeight:tab===item.id?'900':'600',color:tab===item.id?C.white:C.soft}}>{item.label}</Text>
       </Pressable>)}
     </View>}
     <ChatAssistant key={user?.email??'guest'} visible={chatOpen&&isHome} token={token}
       onClose={()=>setChatOpen(false)} onAuth={()=>{setChatOpen(false);requestAuth('main')}}/>
+    <ThemeTransitionVeil/>
   </SafeAreaView>;
 }

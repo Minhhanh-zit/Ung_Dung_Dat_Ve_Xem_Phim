@@ -5,7 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
+import { CORE_CINEMA_NAMES } from '../common/catalog-scope';
 import { ConfigService } from '@nestjs/config';
 import { findCinemasNearby, type OriginInput } from './cinema-distance';
 import { Cinema } from '../entities/cinema.entity';
@@ -28,7 +29,7 @@ export class CinemaService {
 
   findAllCinemas() {
     return this.cinemaRepo.find({
-      where: { status: 'ACTIVE' },
+      where: { status: 'ACTIVE', cinemaName: In(CORE_CINEMA_NAMES) },
       order: { cinemaName: 'ASC' },
     });
   }

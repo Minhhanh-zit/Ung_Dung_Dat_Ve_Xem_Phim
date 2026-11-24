@@ -6,11 +6,11 @@ import { useMovies } from '../hooks/useMovies';
 import { useAuth } from '../context/AuthContext';
 import { resolveAssetUrl } from '../utils/assetUrl';
 
-type Tab = 'NOW_SHOWING' | 'COMING_SOON';
+type Tab = 'NOW_SHOWING' | 'COMING_SOON' | 'EARLY';
 const HERO_COUNT = 5;
 
 export default function HomePage() {
-  const { movies, loading, error, fetchMovies } = useMovies();
+  const { movies, loading, error, fetchMovies } = useMovies({ publicCatalog: true });
   const [activeTab, setActiveTab] = useState<Tab>('NOW_SHOWING');
   const { isLoggedIn, user } = useAuth();
   const displayName = (user?.fullName || user?.email || '').trim().split(' ').pop();
@@ -22,7 +22,7 @@ export default function HomePage() {
   const nowShowing = useMemo(() => visible.filter((movie) => movie.status === 'NOW_SHOWING'), [visible]);
   const comingSoon = useMemo(() => visible.filter((movie) => movie.status === 'COMING_SOON'), [visible]);
   const heroMovies = useMemo(() => (nowShowing.length ? nowShowing : visible).slice(0, HERO_COUNT), [nowShowing, visible]);
-  const selectedMovies = activeTab === 'NOW_SHOWING' ? nowShowing : comingSoon;
+  const selectedMovies = activeTab === 'EARLY' ? comingSoon.filter(movie => movie.hasEarlyShowtime) : activeTab === 'NOW_SHOWING' ? nowShowing : comingSoon;
 
   if (loading) {
     return (
@@ -68,8 +68,9 @@ export default function HomePage() {
         <div className="stitch-tabs justify-center mb-12">
           <button onClick={() => setActiveTab('NOW_SHOWING')} className={`stitch-tab ${activeTab === 'NOW_SHOWING' ? 'active' : ''}`}>Phim đang chiếu</button>
           <button onClick={() => setActiveTab('COMING_SOON')} className={`stitch-tab ${activeTab === 'COMING_SOON' ? 'active' : ''}`}>Phim sắp chiếu</button>
+          <button onClick={() => setActiveTab('EARLY')} className={`stitch-tab ${activeTab === 'EARLY' ? 'active' : ''}`}>Suất chiếu sớm</button>
         </div>
-        <MovieSection title={activeTab === 'NOW_SHOWING' ? 'Phim đang chiếu' : 'Phim sắp chiếu'} movies={selectedMovies} />
+        <MovieSection title={activeTab === 'EARLY' ? 'Suất chiếu sớm' : activeTab === 'NOW_SHOWING' ? 'Phim đang chiếu' : 'Phim sắp chiếu'} movies={selectedMovies} />
       </section>
     </div>
   );

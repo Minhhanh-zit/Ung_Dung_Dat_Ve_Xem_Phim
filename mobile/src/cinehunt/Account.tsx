@@ -2,13 +2,16 @@ import {useCallback,useEffect,useState} from 'react';
 import {Alert,Platform,Text,View} from 'react-native';
 import {api,errorMessage} from '../services/apiClient';
 import {saveRefreshToken} from '../store/persist';
-import {Button,C,Field,GlowPanel,Kicker,Loader,Notice,S,SectionHeading,SimpleScroll} from './ui';
+import {Button,Field,GlowPanel,Kicker,Loader,Notice,SectionHeading,SimpleScroll} from './ui';
+import {AppIcon} from './icons';
+import {useCineHuntTheme} from './theme';
 import type {User} from '../types';
 
 type Props={token:string|null;user:User|null;forceAuth?:boolean;onLogin:(token:string,user:User)=>void;onLogout:()=>void};
 type Notification={notificationId:string;title?:string;message?:string;isRead?:boolean};
 type Membership={tier?:string;points?:number;totalSpent?:number;paidBookings?:number;nextTier?:string;pointsToNextTier?:number;progressPercent?:number};
 export default function Account({token,user,forceAuth=false,onLogin,onLogout}:Props){
+  const {C,S}=useCineHuntTheme();
   const [mode,setMode]=useState<'login'|'register'>('login');
   const [email,setEmail]=useState('');const [password,setPassword]=useState('');
   const [fullName,setFullName]=useState('');const [phone,setPhone]=useState('');
@@ -62,14 +65,14 @@ export default function Account({token,user,forceAuth=false,onLogin,onLogout}:Pr
   if(forceAuth||!token)return <SimpleScroll>
     <View style={{marginTop:24,marginBottom:23}}><Kicker>WELCOME BACK</Kicker><Text style={[S.title,{fontSize:32,marginTop:10}]}>{mode==='login'?'Rất vui được gặp lại.':'Gia nhập CineHunt.'}</Text><Text style={[S.muted,{marginTop:9}]}>Tài khoản của bạn là tấm vé mở ra thế giới điện ảnh.</Text></View>
     <GlowPanel from="#3F285C" to="#172944" style={{marginBottom:23}}>
-      <Text style={{fontSize:30,color:C.lavender}}>✦</Text><Text style={{fontSize:22,fontWeight:'900',color:C.hero,marginTop:12}}>Mỗi suất chiếu là một trải nghiệm</Text>
+      <AppIcon name="assistant" size={30} color={C.lavender}/><Text style={{fontSize:22,fontWeight:'900',color:C.hero,marginTop:12}}>Mỗi suất chiếu là một trải nghiệm</Text>
       <Text style={{color:'#D1D2E9',lineHeight:21,fontSize:13,marginTop:8}}>Lưu lịch sử đặt vé, chọn ghế yêu thích và quản lý vé ngay trên iPhone.</Text>
     </GlowPanel>
     {mode==='register'&&<><Field label="Họ và tên" value={fullName} onChangeText={setFullName}/><Field label="Số điện thoại (tùy chọn)" value={phone} onChangeText={setPhone} keyboardType="phone-pad"/></>}
     <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address"/>
     <Field label="Mật khẩu" value={password} onChangeText={setPassword} secure/>
     {loading&&<Loader/>}{!!error&&<Notice text={error} bad/>}{!!info&&<Notice text={info}/>}
-    <Button title={mode==='login'?'Đăng nhập  →':'Tạo tài khoản  →'} disabled={loading} onPress={()=>void submitAuth()}/>
+    <Button title={mode==='login'?'Đăng nhập':'Tạo tài khoản'} iconRight="forward" disabled={loading} onPress={()=>void submitAuth()}/>
     <Button kind="outline" title={mode==='login'?'Chưa có tài khoản? Đăng ký':'Đã có tài khoản? Đăng nhập'} onPress={()=>{setMode(mode==='login'?'register':'login');setError('')}}/>
     <Text style={[S.muted,{textAlign:'center',fontSize:11,marginTop:16}]}>Ứng dụng hỗ trợ khôi phục phiên đăng nhập an toàn trên thiết bị khi còn hợp lệ.</Text>
   </SimpleScroll>;
@@ -90,13 +93,13 @@ export default function Account({token,user,forceAuth=false,onLogin,onLogout}:Pr
     </GlowPanel>
     {loading&&<Loader/>}{!!error&&<Notice text={error} bad/>}{!!info&&<Notice text={info}/>}
     <SectionHeading title="Hồ sơ cá nhân" subtitle="Thông tin dùng để đặt vé"/>
-    <View style={S.card}><Field label="Họ và tên" value={fullName} onChangeText={setFullName}/><Field label="Số điện thoại" value={phone} onChangeText={setPhone} keyboardType="phone-pad"/><Button title="Lưu thay đổi  ✓" disabled={loading} onPress={()=>void saveProfile()}/></View>
+    <View style={S.card}><Field label="Họ và tên" value={fullName} onChangeText={setFullName}/><Field label="Số điện thoại" value={phone} onChangeText={setPhone} keyboardType="phone-pad"/><Button title="Lưu thay đổi" icon="check" disabled={loading} onPress={()=>void saveProfile()}/></View>
     <View style={[S.card,{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}]}><View><Kicker>THỐNG KÊ TÀI KHOẢN</Kicker><Text style={{color:C.white,fontSize:15,fontWeight:'800',marginTop:7}}>Vé đã thanh toán</Text></View><Text style={{color:C.cyan,fontSize:26,fontWeight:'900'}}>{Number(membership?.paidBookings??0)}</Text></View>
     <SectionHeading title={`Thông báo (${notifications.length})`}/>
-    <View style={S.card}>{notifications.length===0?<View style={{alignItems:'center',paddingVertical:15}}><Text style={{fontSize:28,color:C.purple}}>✉</Text><Text style={[S.muted,{marginTop:12}]}>Bạn chưa có thông báo mới.</Text></View>:notifications.slice(0,20).map((n,i)=><View key={String(n.notificationId||i)} style={{paddingVertical:13,borderBottomWidth:i===notifications.length-1?0:1,borderColor:C.stroke}}><Text style={{color:C.white,fontWeight:'800'}}>{n.title||'Thông báo'}</Text><Text style={[S.muted,{marginTop:6}]}>{n.message}</Text></View>)}</View>
+    <View style={S.card}>{notifications.length===0?<View style={{alignItems:'center',paddingVertical:15}}><AppIcon name="mail" size={30} color={C.purple}/><Text style={[S.muted,{marginTop:12}]}>Bạn chưa có thông báo mới.</Text></View>:notifications.slice(0,20).map((n,i)=><View key={String(n.notificationId||i)} style={{paddingVertical:13,borderBottomWidth:i===notifications.length-1?0:1,borderColor:C.stroke}}><Text style={{color:C.white,fontWeight:'800'}}>{n.title||'Thông báo'}</Text><Text style={[S.muted,{marginTop:6}]}>{n.message}</Text></View>)}</View>
     {isStaff&&<><SectionHeading title="Nhân viên · Soát vé" subtitle="Xác nhận vé hợp lệ theo quyền được phân công"/><View style={S.card}><Field label="Mã vé hoặc mã đơn" value={code} onChangeText={setCode} placeholder="TICKET-... hoặc BK-..."/><Button title="Kiểm tra và check-in" disabled={loading||!code.trim()} onPress={()=>Alert.alert('Soát vé?',`Xác nhận sử dụng mã ${code.trim()}?`,[{text:'Không',style:'cancel'},{text:'Check-in',onPress:()=>void checkIn()}])}/></View></>}
-    <Button title="↻  Tải lại hồ sơ" kind="outline" disabled={loading} onPress={()=>void load()}/>
-    <Button title="Đăng xuất" kind="danger" onPress={()=>Alert.alert('Đăng xuất?','Xóa JWT khỏi ứng dụng và đăng xuất khỏi Backend?', [{text:'Không',style:'cancel'},{text:'Đăng xuất',style:'destructive',onPress:()=>void logout()}])}/>
+    <Button title="Tải lại hồ sơ" icon="refresh" kind="outline" disabled={loading} onPress={()=>void load()}/>
+    <Button title="Đăng xuất" icon="logout" kind="danger" onPress={()=>Alert.alert('Đăng xuất?','Xóa JWT khỏi ứng dụng và đăng xuất khỏi Backend?', [{text:'Không',style:'cancel'},{text:'Đăng xuất',style:'destructive',onPress:()=>void logout()}])}/>
     <Text style={[S.muted,{textAlign:'center',fontSize:11,marginTop:13}]}>Thanh toán chỉ được xác nhận bởi hệ thống hoặc nhân viên có thẩm quyền.</Text>
   </SimpleScroll>;
 }

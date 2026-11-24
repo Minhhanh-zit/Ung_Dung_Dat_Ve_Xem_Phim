@@ -9,6 +9,32 @@ import { ConcessionCombo } from '../entities/concession-combo.entity';
 import { Cinema } from '../entities/cinema.entity';
 
 const PUBLIC_MOVIE_STATUSES = [MovieStatus.NOW_SHOWING, MovieStatus.COMING_SOON];
+const CHAT_CORE_CINEMAS = ['CineHunt Thanh Xuân', 'CineHunt Hà Đông', 'CineHunt Cầu Giấy'];
+const CHAT_BOOKING_CUTOFF_MS = 15 * 60 * 1000;
+
+// A movie is recommendable only when it has an upcoming open show in an
+// active pilot cinema and room. SQL datetime2 showtimes are stored as UTC;
+// release_date is a Vietnam calendar date, so compare dates in UTC+07.
+const CHAT_ELIGIBLE_MOVIE = `EXISTS (
+  SELECT 1 FROM dbo.showtimes cs
+  INNER JOIN dbo.rooms cr ON cr.room_id = cs.room_id
+  INNER JOIN dbo.cinemas cc ON cc.cinema_id = cr.cinema_id
+  WHERE cs.movie_id = movie.movie_id
+    AND cs.status = 'OPEN' AND cs.start_time > :chatCutoff
+    AND cr.status = 'ACTIVE' AND cc.status = 'ACTIVE'
+    AND cc.cinema_name IN (:...chatCoreCinemas)
+    AND (movie.status = 'NOW_SHOWING' OR (
+      movie.status = 'COMING_SOON' AND movie.release_date IS NOT NULL
+      AND CONVERT(date, DATEADD(minute, 420, cs.start_time)) < movie.release_date
+    ))
+)`;
+
+function chatAvailabilityParams() {
+  return {
+    chatCutoff: new Date(Date.now() + CHAT_BOOKING_CUTOFF_MS),
+    chatCoreCinemas: CHAT_CORE_CINEMAS,
+  };
+}
 
 const MAX_LIMIT = 20;
 
@@ -104,6 +130,7 @@ export class ChatDataService {
       .where('movie.status IN (:...statuses)', {
         statuses: PUBLIC_MOVIE_STATUSES,
       })
+      .andWhere(CHAT_ELIGIBLE_MOVIE, chatAvailabilityParams())
       .orderBy('movie.averageRating', 'DESC')
       .addOrderBy('movie.releaseDate', 'DESC')
       .take(limit);
@@ -137,10 +164,14 @@ export class ChatDataService {
 
     return {
       count: movies.length,
+      note: movies.length === 0
+        ? 'Chưa có phim đang chiếu hoặc suất chiếu sớm phù hợp còn mở bán. Không gợi ý phim sắp chiếu thông thường.'
+        : 'COMING_SOON trong danh sách này nghĩa là có suất chiếu sớm thực tế còn mở bán.',
       movies: movies.map((m) => ({
         movieId: m.movieId,
         title: m.title,
         status: m.status,
+        recommendationType: m.status === MovieStatus.COMING_SOON ? 'EARLY_SCREENING' : 'NOW_SHOWING',
         durationMinutes: m.durationMinutes,
         ageRating: m.ageRating,
         genres: (m.genres ?? []).map((g) => g.genreName),
@@ -161,7 +192,8 @@ export class ChatDataService {
       .leftJoinAndSelect('movie.genres', 'genre')
       .where('movie.status IN (:...statuses)', {
         statuses: PUBLIC_MOVIE_STATUSES,
-      });
+      })
+      .andWhere(CHAT_ELIGIBLE_MOVIE, chatAvailabilityParams());
 
     if (args?.movieId && Number.isInteger(Number(args.movieId))) {
       qb.andWhere('movie.movieId = :id', { id: Number(args.movieId) });
@@ -173,7 +205,7 @@ export class ChatDataService {
 
     const movie = await qb.getOne();
     if (!movie) {
-      return { found: false, reason: 'Không tìm thấy phim đang hiển thị nào khớp.' };
+      return { found: false, reason: 'Không tìm thấy phim đang chiếu hoặc có suất chiếu sớm còn mở bán phù hợp.' };
     }
 
     return {
@@ -190,6 +222,7 @@ export class ChatDataService {
         country: movie.country,
         language: movie.language,
         status: movie.status,
+        recommendationType: movie.status === MovieStatus.COMING_SOON ? 'EARLY_SCREENING' : 'NOW_SHOWING',
         averageRating: toNumber(movie.averageRating),
         genres: (movie.genres ?? []).map((g) => g.genreName),
         releaseDate: movie.releaseDate
@@ -233,7 +266,13 @@ export class ChatDataService {
         'cinema.city',
       ])
       .where('st.status = :open', { open: 'OPEN' })
-      .andWhere('st.startTime >= :now', { now: new Date() })
+      .andWhere('st.startTime > :chatCutoff', chatAvailabilityParams())
+      .andWhere("room.status = 'ACTIVE' AND cinema.status = 'ACTIVE'")
+      .andWhere('cinema.cinemaName IN (:...chatCoreCinemas)')
+      .andWhere(`(movie.status = 'NOW_SHOWING' OR (
+        movie.status = 'COMING_SOON' AND movie.releaseDate IS NOT NULL
+        AND CONVERT(date, DATEADD(minute, 420, st.startTime)) < movie.releaseDate
+      ))`)
       .orderBy('st.startTime', 'ASC')
       .take(limit);
 
@@ -424,6 +463,7 @@ export class ChatDataService {
     const qb = this.cinemaRepo
       .createQueryBuilder('c')
       .where('c.status = :active', { active: 'ACTIVE' })
+      .andWhere('c.cinemaName IN (:...chatCoreCinemas)', { chatCoreCinemas: CHAT_CORE_CINEMAS })
       .orderBy('c.cinemaName', 'ASC')
       .take(limit);
 

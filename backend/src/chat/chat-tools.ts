@@ -24,10 +24,10 @@ const ALL_CHAT_FUNCTION_DECLARATIONS = [
   {
     name: CHAT_TOOL_NAMES.SEARCH_MOVIES,
     description:
-      'Tìm phim đang chiếu hoặc sắp chiếu trên CineHunt. Dùng khi người dùng hỏi ' +
-      '"có phim gì hay", "phim kinh dị nào đang chiếu", "phim nào sắp ra mắt", ' +
+      'Tìm phim đang chiếu hoặc phim có suất chiếu sớm thực tế còn mở bán tại CineHunt. Dùng khi người dùng hỏi ' +
+      '"có phim gì hay", "phim kinh dị nào đang chiếu", "có suất chiếu sớm không", ' +
       'hoặc muốn tìm phim theo tên/đạo diễn/diễn viên. Luôn gọi hàm này thay vì ' +
-      'trả lời theo trí nhớ.',
+      'trả lời theo trí nhớ. Không gợi ý phim sắp chiếu chưa có suất chiếu sớm.',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -39,7 +39,7 @@ const ALL_CHAT_FUNCTION_DECLARATIONS = [
         status: {
           type: 'STRING',
           enum: ['NOW_SHOWING', 'COMING_SOON'],
-          description: 'NOW_SHOWING = đang chiếu, COMING_SOON = sắp chiếu.',
+          description: 'NOW_SHOWING = đang chiếu còn suất mở bán; COMING_SOON = chỉ phim có suất chiếu sớm thực tế còn mở bán.',
         },
         genre: {
           type: 'STRING',

@@ -3,6 +3,7 @@ export type Genre = { genreId: number; genreName: string };
 export type Movie = {
   movieId: number; title: string; originalTitle?: string | null;
   description?: string | null; durationMinutes: number; ageRating?: string | null;
+  hasEarlyShowtime?: boolean;
   status: string; posterUrl?: string | null; releaseDate?: string | null;
   genres?: Genre[]; director?: string | null; actors?: string | null;
   averageRating?: number | null;
@@ -14,10 +15,10 @@ export type Showtime = {
 export type Seat = {
   showtimeSeatId: number; seatId: number; seatLabel: string; seatRow: string | null;
   seatNumber: number | null; status: 'AVAILABLE'|'HELD'|'SOLD'|'BLOCKED';
-  price: number | string; heldByUserId?: number | null;
+  price: number | string; heldByUserId?: number | null; seatTypeCode?: string | null; type?: string | null;
 };
 export type SeatMap = {
-  showtimeId: number; movieTitle?: string; cinemaName?: string; roomName?: string;
+  showtimeId: number; movieTitle?: string | null; durationMinutes?: number | null; ageRating?: string | null; cinemaName?: string; roomName?: string;
   totalSeats: number; seatsGenerated: boolean; seats: Seat[];
 };
 export type Hold = {

@@ -45,6 +45,11 @@ export class ShowtimeController {
     return this.showtimeService.findAllForAdmin();
   }
 
+  @Get(':id/age-policy')
+  getAgePolicy(@Param('id', ParseIntPipe) id: number) {
+    return this.showtimeService.getAgePolicy(id);
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.showtimeService.findOne(id);

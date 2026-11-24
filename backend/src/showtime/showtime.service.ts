@@ -1,3 +1,4 @@
+import { cinehuntSeatPrice } from './seat-pricing'; // CINEHUNT_FIXED_SEAT_PRICE
 import {
   ConflictException,
   Injectable,
@@ -5,14 +6,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, MoreThan, Not, Repository } from 'typeorm';
 import { Showtime } from '../entities/showtime.entity';
 import { ShowtimeSeat } from '../entities/showtime-seat.entity';
 import { Room } from '../entities/room.entity';
+import { MovieStatus } from '../entities/movie.entity';
+import { CORE_CINEMA_NAMES } from '../common/catalog-scope';
 import { Seat } from '../entities/seat.entity';
 import { CreateShowtimeDto } from './dto/create-showtime.dto';
 import { UpdateShowtimeDto } from './dto/update-showtime.dto';
 import { assertNotStale } from '../common/utils/optimistic-lock.util';
+import { ageAdmissionPolicy } from './age-admission-policy';
 
 @Injectable()
 export class ShowtimeService {
@@ -32,7 +36,7 @@ export class ShowtimeService {
 
   async findAll(): Promise<Showtime[]> {
     return this.showtimeRepository.find({
-      where: { status: Not('CANCELLED') },
+      where: { status: 'OPEN', startTime: MoreThan(new Date(Date.now() + 15 * 60 * 1000)), movie: { status: In([MovieStatus.NOW_SHOWING, MovieStatus.COMING_SOON]) }, room: { status: 'ACTIVE', cinema: { status: 'ACTIVE', cinemaName: In(CORE_CINEMA_NAMES) } } },
       relations: ['room', 'room.cinema'],
       order: { startTime: 'ASC' },
     });
@@ -47,6 +51,19 @@ export class ShowtimeService {
     });
   }
 
+  async getAgePolicy(id: number) {
+    const showtime = await this.showtimeRepository.findOne({
+      where: { showtimeId: id }, relations: ['movie'],
+    });
+    if (!showtime?.movie) throw new NotFoundException('Không tìm thấy phim của suất chiếu');
+    return {
+      showtimeId: showtime.showtimeId,
+      movieId: showtime.movieId,
+      movieTitle: showtime.movie.title,
+      ...ageAdmissionPolicy(showtime.movie.ageRating),
+    };
+  }
+
   async findOne(id: number): Promise<Showtime> {
     const showtime = await this.showtimeRepository.findOne({
       where: { showtimeId: id },
@@ -58,7 +75,7 @@ export class ShowtimeService {
 
   async findByMovie(movieId: number): Promise<Showtime[]> {
     return this.showtimeRepository.find({
-      where: { movieId, status: 'OPEN' },
+      where: { movieId, status: 'OPEN', startTime: MoreThan(new Date(Date.now() + 15 * 60 * 1000)), movie: { status: In([MovieStatus.NOW_SHOWING, MovieStatus.COMING_SOON]) }, room: { status: 'ACTIVE', cinema: { status: 'ACTIVE', cinemaName: In(CORE_CINEMA_NAMES) } } },
       relations: ['room', 'room.cinema'],
       order: { startTime: 'ASC' },
     });
@@ -174,7 +191,7 @@ export class ShowtimeService {
         return manager.create(ShowtimeSeat, {
           showtimeId,
           seatId: seat.seatId,
-          price: Math.round(Number(basePrice) * multiplier),
+          price: cinehuntSeatPrice(Number(basePrice), seat.seatType?.typeCode, multiplier),
           status: seat.status === 'ACTIVE' ? ('AVAILABLE' as const) : ('BLOCKED' as const),
           heldByUserId: null,
           holdExpiresAt: null,
@@ -511,9 +528,7 @@ export class ShowtimeService {
           const multiplier = Number(
             ss.seat?.seatType?.priceMultiplier ?? 1,
           );
-          ss.price = Math.round(
-            Number(nextBasePrice) * multiplier,
-          );
+          ss.price = cinehuntSeatPrice(Number(nextBasePrice), ss.seat?.seatType?.typeCode, multiplier);
         });
 
         if (seats.length > 0) {

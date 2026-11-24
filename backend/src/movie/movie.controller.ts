@@ -27,6 +27,11 @@ export class MovieController {
     return this.movieService.findAll(query);
   }
 
+  @Get('catalog')
+  findCatalog(@Query() query: MovieQueryDto) {
+    return this.movieService.findCatalog(query);
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.movieService.findOne(id);

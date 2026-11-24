@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import ShowtimeTable from '../../components/admin/ShowtimeTable';
 import ShowtimeForm from '../../components/admin/ShowtimeForm';
+import AutoScheduleModal from '../../components/admin/AutoScheduleModal';
 import ConfirmCancelModal from '../../components/admin/ConfirmCancelModal';
 import {
   Btn,
@@ -28,6 +29,7 @@ const toFormData = (s: Showtime): ShowtimeFormData => ({
 });
 
 const AdminShowtimesPage: React.FC = () => {
+  const [autoScheduleOpen, setAutoScheduleOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingShowtime, setEditingShowtime] = useState<Showtime | null>(null);
   const [cancelingShowtime, setCancelingShowtime] = useState<Showtime | null>(null);
@@ -145,6 +147,9 @@ const AdminShowtimesPage: React.FC = () => {
             <Btn variant="ghost" onClick={() => void fetchShowtimes()} disabled={loading}>
               🔄 Làm mới
             </Btn>
+            <Btn variant="primary" onClick={() => setAutoScheduleOpen(true)} disabled={loading}>
+              Tạo lịch chiếu tự động
+            </Btn>
             <Btn
               variant="primary"
               onClick={() => {
@@ -234,6 +239,14 @@ const AdminShowtimesPage: React.FC = () => {
           onGenerateSeats={(s) => void handleGenerateSeats(s.id)}
           generatingId={generatingId}
         />
+      )}
+
+      {autoScheduleOpen && (
+        <AutoScheduleModal onClose={() => setAutoScheduleOpen(false)} onCreated={(result) => {
+          setAutoScheduleOpen(false);
+          showToast(`Đã tạo ${result.created} suất (${result.early} suất sớm), ${result.seatCount} ghế`);
+          void fetchShowtimes();
+        }} />
       )}
 
       {isFormOpen && (

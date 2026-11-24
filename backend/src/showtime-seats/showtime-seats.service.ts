@@ -48,28 +48,26 @@ export class ShowtimeSeatsService {
 
     const seats = await this.showtimeSeatRepository.find({
       where: { showtimeId },
-      relations: [
-        'seat',
-        'seat.seatType',
-        'showtime',
-        'showtime.room',
-        'showtime.room.cinema',
-      ],
+      relations: ['seat', 'seat.seatType'], // CINEHUNT_SEATMAP_LIGHT: only relations used in response
       order: {
         seat: { seatRow: 'ASC', seatNumber: 'ASC' },
       },
     });
 
     let movieTitle: string | null = null;
+    let durationMinutes: number | null = null;
+    let ageRating: string | null = null;
     try {
       const rows = await this.dataSource.query(
-        `SELECT m.title
+        `SELECT m.title, m.duration_minutes AS durationMinutes, m.age_rating AS ageRating
          FROM showtimes st
          JOIN movies m ON m.movie_id = st.movie_id
          WHERE st.showtime_id = @0`,
         [showtimeId],
-      ) as Array<{ title: string }>;
+      ) as Array<{ title: string; durationMinutes: number | null; ageRating: string | null }>;
       movieTitle = rows[0]?.title ?? null;
+      durationMinutes = rows[0]?.durationMinutes ?? null;
+      ageRating = rows[0]?.ageRating ?? null;
     } catch {
       movieTitle = null;
     }
@@ -77,6 +75,8 @@ export class ShowtimeSeatsService {
     return {
       showtimeId,
       movieTitle,
+      durationMinutes,
+      ageRating,
       cinemaName: showtime.room?.cinema?.cinemaName ?? null,
       roomName:   showtime.room?.roomName ?? null,
       startTime:  showtime.startTime ?? null,
@@ -134,8 +134,8 @@ export class ShowtimeSeatsService {
   }
 
   async releaseHold(userId: number, holdId: number) {
-    await this.seatHoldService.releaseHold(String(holdId), userId);
-    return { message: 'Release hold thành công', holdId };
+    const result = await this.seatHoldService.releaseHold(String(holdId), userId);
+    return { message: 'Release hold thành công', ...result, holdId };
   }
 
   async expireSeatHolds(): Promise<{

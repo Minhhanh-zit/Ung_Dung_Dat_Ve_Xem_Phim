@@ -1,8 +1,11 @@
 import {useEffect,useMemo,useState} from 'react';
 import {Pressable,ScrollView,Text,View} from 'react-native';
 import {api,errorMessage,formatMoney} from '../services/apiClient';
-import {Button,C,Loader,Notice,S,SectionHeading} from './ui';
+import {Button,Loader,Notice,SectionHeading} from './ui';
+import {AppIcon} from './icons';
+import {useCineHuntTheme} from './theme';
 import type {Movie,Showtime} from '../types';
+import {loadPublicCatalog} from './publicCatalog';
 
 type CinemaOption={cinemaId:number;cinemaName:string};
 type Props={cinemas:CinemaOption[];onSeats:(showtime:Showtime)=>void};
@@ -12,6 +15,7 @@ function dayKey(value:Date){
 }
 
 export default function CinemaSchedule({cinemas,onSeats}:Props){
+  const {C,S}=useCineHuntTheme();
   const [selectedCinema,setSelectedCinema]=useState<number|null>(null);
   const [selectedDay,setSelectedDay]=useState(dayKey(new Date()));
   const [shows,setShows]=useState<Showtime[]>([]);
@@ -29,7 +33,7 @@ export default function CinemaSchedule({cinemas,onSeats}:Props){
     try{
       const [s,m]=await Promise.all([
         api<Showtime[]>('/showtimes'),
-        api<{items:Movie[]}>('/movies?page=1&limit=50'),
+        loadPublicCatalog(),
       ]);
       if(!Array.isArray(s)||!Array.isArray(m.items))throw new Error('Dữ liệu lịch chiếu chưa hợp lệ');
       setShows(s);setMovies(m.items);setLoaded(true);
@@ -65,14 +69,14 @@ export default function CinemaSchedule({cinemas,onSeats}:Props){
     <SectionHeading title="Lịch chiếu theo rạp" subtitle="Lịch bán vé thực tế từ CineHunt, chọn ngày và suất chiếu"/>
     {!cinemas.length&&<Notice text="Chưa có rạp để xem lịch chiếu."/>}
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:9,paddingVertical:5,paddingRight:15}}>
-      {cinemas.map(c=><Pressable key={c.cinemaId} accessibilityRole="button" accessibilityLabel={`Chọn lịch ${c.cinemaName}`} onPress={()=>setSelectedCinema(c.cinemaId)} style={{padding:12,borderRadius:14,borderWidth:1,borderColor:selectedCinema===c.cinemaId?C.purple:C.stroke,backgroundColor:selectedCinema===c.cinemaId?C.panel2:C.panel,minWidth:156,maxWidth:225}}>
+      {cinemas.map(c=><Pressable key={c.cinemaId} accessibilityRole="button" accessibilityLabel={`Chọn lịch ${c.cinemaName}`} accessibilityState={{selected:selectedCinema===c.cinemaId}} onPress={()=>setSelectedCinema(c.cinemaId)} style={{minHeight:44,justifyContent:'center',padding:12,borderRadius:14,borderWidth:1,borderColor:selectedCinema===c.cinemaId?C.purple:C.stroke,backgroundColor:selectedCinema===c.cinemaId?C.panel2:C.panel,minWidth:156,maxWidth:225}}>
         <Text style={{color:selectedCinema===c.cinemaId?C.purple:C.white,fontWeight:'800',fontSize:13}}>{c.cinemaName}</Text>
       </Pressable>)}
     </ScrollView>
     {selectedCinema!==null&&<>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingVertical:14}}>
-        {dates.map(d=><Pressable key={d.key} accessibilityRole="button" accessibilityLabel={`Lịch ngày ${d.key}`} onPress={()=>setSelectedDay(d.key)} style={{paddingHorizontal:16,paddingVertical:13,borderRadius:13,backgroundColor:selectedDay===d.key?C.purple:C.panel,borderWidth:1,borderColor:selectedDay===d.key?C.purple:C.stroke}}>
-          <Text style={{color:selectedDay===d.key?C.bg:C.white,fontWeight:'800'}}>{d.label}</Text>
+        {dates.map(d=><Pressable key={d.key} accessibilityRole="button" accessibilityLabel={`Lịch ngày ${d.key}`} accessibilityState={{selected:selectedDay===d.key}} onPress={()=>setSelectedDay(d.key)} style={{paddingHorizontal:16,paddingVertical:13,borderRadius:13,backgroundColor:selectedDay===d.key?C.purple:C.panel,borderWidth:1,borderColor:selectedDay===d.key?C.purple:C.stroke}}>
+          <View style={{flexDirection:'row',alignItems:'center',gap:6}}><AppIcon name="calendar" size={15} color={selectedDay===d.key?C.bg:C.white}/><Text style={{color:selectedDay===d.key?C.bg:C.white,fontWeight:'800'}}>{d.label}</Text></View>
         </Pressable>)}
       </ScrollView>
       {loading&&<Loader/>}
@@ -88,14 +92,14 @@ export default function CinemaSchedule({cinemas,onSeats}:Props){
               const date=new Date(s.startTime);
               const hour=`${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
               return <Pressable key={s.showtimeId} accessibilityRole="button" accessibilityLabel={`Đặt vé ${hour}`} onPress={()=>onSeats(s)} style={{borderRadius:13,borderWidth:1,borderColor:C.purple,backgroundColor:C.panel2,paddingHorizontal:14,paddingVertical:11}}>
-                <Text style={{color:C.white,fontWeight:'900',fontSize:15}}>{hour}</Text>
-                <Text style={{color:C.green,fontSize:11,marginTop:4}}>{formatMoney(s.basePrice)}</Text>
+                <View style={{flexDirection:'row',alignItems:'center',gap:6}}><AppIcon name="clock" size={14} color={C.purple}/><Text style={{color:C.white,fontWeight:'900',fontSize:15}}>{hour}</Text></View>
+                <Text style={{color:C.green,fontSize:11,marginTop:4}}>Từ {formatMoney(s.basePrice)}</Text>
               </Pressable>
             })}
           </View>
         </View>
       })}
-      <Button title="↻ Làm mới lịch chiếu" kind="outline" disabled={loading} onPress={()=>void refresh()}/>
+      <Button title="Làm mới lịch chiếu" icon="refresh" kind="outline" disabled={loading} onPress={()=>void refresh()}/>
     </>}
   </View>;
 }

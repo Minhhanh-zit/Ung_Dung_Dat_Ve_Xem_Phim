@@ -1,3 +1,4 @@
+import { completeCoupleSelection } from '../showtime/couple-pair'; // CINEHUNT_COUPLE_PAIR_V1
 import {
   BadRequestException,
   Injectable,
@@ -270,7 +271,7 @@ export class BookingService {
         userId,
         status: SeatHoldStatus.ACTIVE,
       },
-      relations: { showtimeSeat: true },
+      relations: { showtimeSeat: { seat: { seatType: true } } },
     });
 
     if (holds.length !== holdIds.length) {
@@ -298,6 +299,7 @@ export class BookingService {
       throw new BadRequestException('Các ghế phải thuộc cùng một suất chiếu');
     }
 
+    if (!completeCoupleSelection(holds.map(h=>h.showtimeSeat))) throw new BadRequestException('Ghế đôi phải được đặt đủ cả cặp');
     const showtimeId = distinctShowtimeIds[0];
     const subtotalAmount = holds.reduce((sum, h) => sum + Number(h.showtimeSeat.price), 0);
 

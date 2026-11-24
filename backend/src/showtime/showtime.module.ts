@@ -6,11 +6,13 @@ import { Room } from '../entities/room.entity';
 import { Seat } from '../entities/seat.entity';
 import { ShowtimeController } from './showtime.controller';
 import { ShowtimeService } from './showtime.service';
+import { AutoScheduleService } from './auto-schedule.service';
+import { AutoScheduleController } from './auto-schedule.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Showtime, ShowtimeSeat, Room, Seat])],
-  controllers: [ShowtimeController],
-  providers: [ShowtimeService],
+  controllers: [ShowtimeController, AutoScheduleController],
+  providers: [ShowtimeService, AutoScheduleService],
   exports: [ShowtimeService],
 })
 export class ShowtimeModule {}

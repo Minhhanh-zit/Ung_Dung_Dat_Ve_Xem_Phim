@@ -10,10 +10,11 @@ import {
 } from '../api/movieRatingApi';
 import { resolveAssetUrl } from '../utils/assetUrl';
 
-const STATUS_TABS: { key: Movie['status'] | 'ALL'; label: string }[] = [
+const STATUS_TABS: { key: Movie['status'] | 'ALL' | 'EARLY'; label: string }[] = [
   { key: 'ALL', label: 'Tất cả' },
   { key: 'NOW_SHOWING', label: 'Đang chiếu' },
   { key: 'COMING_SOON', label: 'Sắp chiếu' },
+  { key: 'EARLY', label: 'Suất chiếu sớm' },
 ];
 const FALLBACK_POSTER = 'https://picsum.photos/seed/hot-cmc/240/360';
 const RATING_UPDATED_EVENT = 'cinehunt-movie-rating-updated';
@@ -24,14 +25,14 @@ interface HotMovieItem {
 }
 
 export default function MoviesPage() {
-  const { movies, loading, error, fetchMovies } = useMovies();
+  const { movies, loading, error, fetchMovies } = useMovies({ publicCatalog: true });
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<Movie['status'] | 'ALL'>('ALL');
+  const [status, setStatus] = useState<Movie['status'] | 'ALL' | 'EARLY'>('NOW_SHOWING');
   const [topRatings, setTopRatings] = useState<MovieRatingSummary[]>([]);
   const [hotMovieIds, setHotMovieIds] = useState<number[]>([]);
 
   const filtered = useMemo(() => movies.filter((movie) => {
-    const matchStatus = status === 'ALL' ? movie.status !== 'HIDDEN' : movie.status === status;
+    const matchStatus = status === 'EARLY' ? movie.hasEarlyShowtime === true : status === 'ALL' ? ['NOW_SHOWING', 'COMING_SOON'].includes(movie.status) : movie.status === status;
     const matchSearch = movie.title.toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'));
     return matchStatus && matchSearch;
   }), [movies, search, status]);
@@ -76,7 +77,7 @@ export default function MoviesPage() {
     const ratingById = new Map(
       topRatings.map((rating) => [rating.movieId, rating]),
     );
-    const fixedIds = [...hotMovieIds];
+    const fixedIds = hotMovieIds.filter(id => movieById.get(id)?.status === 'NOW_SHOWING');
     const usedIds = new Set(fixedIds);
 
     for (const movie of movies) {
@@ -95,7 +96,7 @@ export default function MoviesPage() {
       .slice(0, 3)
       .map((movieId) => {
         const movie = movieById.get(movieId);
-        if (!movie) return null;
+        if (!movie || movie.status !== 'NOW_SHOWING') return null;
 
         return {
           movie,

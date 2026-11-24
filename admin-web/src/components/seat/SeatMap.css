@@ -434,3 +434,31 @@
     animation: none !important;
     transition: none !important;
   }}
+
+/* CINEHUNT_SEAT120: only free seats use type colors; statuses override. */
+.seat.available.seat-kind-standard:not(.selected) { background:#B9E0CF; border-color:#81C6A8; color:#145C45; }
+.seat.available.seat-kind-vip:not(.selected), .legend-color.vip { background:#F5D68D; border-color:#D2A345; color:#704900; }
+.seat.available.seat-kind-couple:not(.selected), .legend-color.couple { background:#F3BDD2; border-color:#D17CA5; color:#842653; }
+.legend-color.available { background:#B9E0CF; }
+.seat-map-container { overflow-x:auto; }
+.seats-container { flex-wrap:nowrap; }
+.seat { flex-shrink:0; }
+
+/* CINEHUNT_BETA_SEAT_V4: color denotes status; type denotes shape. */
+.ch-beta-legend { display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:12px;border-bottom:1px solid var(--st-border,#7774); }
+.ch-beta-legend .legend-items { display:grid;gap:8px;margin-top:8px; }
+.ch-beta-note { text-align:center;font-size:12px;opacity:.8;margin:8px 0; }
+.seat.available.seat-kind-standard:not(.selected), .seat.available.seat-kind-vip:not(.selected), .seat.available.seat-kind-couple:not(.selected), .legend-color.available { background:#B9E0CF;border-color:#81C6A8;color:#145C45; }
+.seat.seat-kind-standard, .ch-beta-shape-standard { border-radius:45% 45% 7px 7px; }
+.seat.seat-kind-vip, .ch-beta-shape-vip { border-radius:7px; }
+.seat.seat-kind-couple, .ch-beta-shape-couple { border-radius:4px; }
+.seat.seat-kind-couple:nth-child(odd) { border-top-right-radius:1px;border-bottom-right-radius:1px; }
+.seat.seat-kind-couple:nth-child(even) { border-top-left-radius:1px;border-bottom-left-radius:1px; }
+.ch-beta-shape-couple { width:28px; }
+.seat .seat-number { font-size:clamp(9px,1.4vw,12px); }
+.seat { border-bottom-width:3px; }
+.seats-container { justify-content:center; }
+
+/* CINEHUNT_COUPLE_PAIR_V1 */
+.seat.ch-couple-pair { flex: 0 0 auto; width: calc(2 * 42px + 6px); border-radius: 8px !important; }
+.seat.ch-couple-pair .seat-number { white-space: nowrap; }

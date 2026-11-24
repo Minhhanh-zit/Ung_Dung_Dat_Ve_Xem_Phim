@@ -5,10 +5,12 @@ import * as Location from 'expo-location';
 import type {ScrollViewInstance} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {api,errorMessage} from '../services/apiClient';
-import {C} from './ui';
+import {AppIcon, type IconName} from './icons';
+import {ThemeTransitionVeil, useCineHuntTheme} from './theme';
 
 type ChatLink={label:string;url:string};
-type ChatMessage={role:'user'|'assistant';content:string;routeLinks?:ChatLink[]};
+type ChatHeading={icon:IconName;text:string};
+type ChatMessage={role:'user'|'assistant';content:string;heading?:ChatHeading;routeLinks?:ChatLink[]};
 type NearbyCinema={cinemaId:number;cinemaName:string;address:string|null;ward:string;distanceKm:number|null;durationMinutes:number|null;mapsUrl:string};
 type NearbyResult={method:'DRIVING'|'STRAIGHT_LINE'|'UNRANKED';note:string;cinemas:NearbyCinema[]};
 const plain=(s:string)=>s.toLocaleLowerCase('vi-VN').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d');
@@ -28,6 +30,7 @@ function namedOrigin(s:string):string|null{
 type Props={visible:boolean;token:string|null;onClose:()=>void;onAuth:()=>void};
 
 export default function ChatAssistant({visible,token,onClose,onAuth}:Props){
+  const {C}=useCineHuntTheme();
   // Component stays mounted when changing main tabs. Parent keys it by account.
   const [messages,setMessages]=useState<ChatMessage[]>([]);
   const [draft,setDraft]=useState('');
@@ -59,18 +62,27 @@ export default function ChatAssistant({visible,token,onClose,onAuth}:Props){
           token,method:'POST',body,timeout:25000,
         });
         const rows=result.cinemas??[];
-        const details=rows.map((c,i)=>{
+        const ranked=result.method!=='UNRANKED'&&rows.length>0&&rows.every(c=>c.distanceKm!=null);
+        const first=ranked?rows[0]:undefined;
+        const describe=(c:NearbyCinema)=>{
           const km=c.distanceKm==null?'':` · ${c.distanceKm.toLocaleString('vi-VN')} km`;
           const duration=c.durationMinutes!=null?` · ${c.durationMinutes} phút`:'';
-          return `${i+1}. ${c.cinemaName} (${c.ward})${km}${duration}`;
-        });
-        const title=result.method==='DRIVING'?'🚗 Gần nhất theo đường đi ô tô:':
-          result.method==='STRAIGHT_LINE'?'📍 Gần theo GPS (đường thẳng, chỉ ước tính):':
-          '📍 Ba rạp trong CineHunt:';
-        const reply=[title,...details,result.note,
-          'Nhấn “Chỉ đường” bên dưới để Google Maps hiển thị km đường thực tế.'].join('\n');
+          return `${c.cinemaName}${km}${duration}`;
+        };
+        const heading:ChatHeading=ranked&&result.method==='DRIVING'?{icon:'car',text:'Rạp gần nhất theo đường ô tô'}:
+          ranked&&result.method==='STRAIGHT_LINE'?{icon:'pin',text:'Rạp gần nhất theo vị trí GPS'}:
+          {icon:'pin',text:'Rạp CineHunt'};
+        const reply=first?[
+          `${describe(first)}${result.method==='STRAIGHT_LINE'?' (đường thẳng, ước tính)':''}.`,
+          first.address||first.ward,
+          ...(rows.length>1?['Các lựa chọn khác:',...rows.slice(1).map(describe)]:[]),
+          result.method==='STRAIGHT_LINE'?'Mở Chỉ đường để xem km đi xe thực tế.':'Khoảng cách và thời gian theo tuyến ô tô có thể thay đổi.',
+          ...(!origin?['Kết quả theo vị trí điện thoại hiện tại, không phải địa chỉ nhà đã lưu.']:[]),
+        ].join('\n'):rows.length?[
+          'Chưa đủ dữ liệu để xác định rạp gần nhất.',...rows.map(describe),result.note,
+        ].join('\n'):'Hiện chưa có rạp CineHunt hoạt động trong phạm vi tìm kiếm.';
         setMessages([...conversation,{
-          role:'assistant' as const,content:reply,
+          role:'assistant' as const,content:reply,heading,
           routeLinks:rows.map((c)=>({label:`Chỉ đường · ${c.cinemaName}`,url:c.mapsUrl})),
         }].slice(-30));
         return;
@@ -113,47 +125,53 @@ export default function ChatAssistant({visible,token,onClose,onAuth}:Props){
         <View style={{paddingHorizontal:18,paddingTop:17,paddingBottom:13,borderBottomWidth:1,borderBottomColor:C.stroke,
           flexDirection:'row',alignItems:'center',gap:12}}>
           <View style={{width:43,height:43,borderRadius:22,backgroundColor:C.purple,alignItems:'center',justifyContent:'center'}}>
-            <Text style={{fontSize:23,color:C.bg,fontWeight:'900'}}>✦</Text>
+            <AppIcon name="assistant" size={24} color={C.bg} strokeWidth={2.3}/>
           </View>
           <View style={{flex:1}}>
             <Text style={{color:C.white,fontWeight:'900',fontSize:18}}>CineHunt AI</Text>
-            <Text style={{color:C.muted,fontSize:11,marginTop:3}}>Gợi ý phim, rạp và thông tin xem phim</Text>
+            <Text style={{color:C.muted,fontSize:11,marginTop:3}}>Gợi ý phim đang chiếu, suất chiếu sớm và rạp</Text>
           </View>
           <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Đóng cửa sổ chat"
-            style={{width:38,height:38,borderRadius:19,borderWidth:1,borderColor:C.stroke,
+            style={{width:44,height:44,borderRadius:22,borderWidth:1,borderColor:C.stroke,
               backgroundColor:C.panel,justifyContent:'center',alignItems:'center'}}>
-            <Text style={{color:C.white,fontSize:20}}>×</Text>
+            <AppIcon name="close" size={20} color={C.white}/>
           </Pressable>
         </View>
         <ScrollView ref={scroll} style={{flex:1}} keyboardShouldPersistTaps="handled"
           contentContainerStyle={{padding:15,paddingBottom:20,flexGrow:1}}
           onContentSizeChange={()=>scroll.current?.scrollToEnd({animated:true})}>
-          {token&&messages.length===0&&<Pressable accessibilityRole="button"
+          {token&&messages.length===0&&<Pressable accessibilityRole="button" accessibilityLabel="Tìm rạp gần tôi"
             onPress={()=>void deliver([{role:'user',content:'Tìm rạp gần tôi'}])}
-            style={{alignSelf:'flex-start',padding:11,marginBottom:10,borderRadius:11,backgroundColor:C.panel}}>
-            <Text style={{color:C.purple,fontWeight:'800'}}>📍 Tìm rạp gần tôi</Text>
+            style={{alignSelf:'flex-start',minHeight:44,flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:12,marginBottom:10,borderRadius:11,backgroundColor:C.panel}}>
+            <AppIcon name="pin" size={17} color={C.purple}/><Text style={{color:C.purple,fontWeight:'800'}}>Tìm rạp gần tôi</Text>
           </Pressable>}
           {messages.length===0&&<View style={{backgroundColor:C.panel,borderRadius:17,padding:15,borderWidth:1,borderColor:C.stroke}}>
-            <Text style={{color:C.white,fontWeight:'800',fontSize:14}}>✦  Chào bạn, CineHunt AI đây!</Text>
+            <View style={{flexDirection:'row',alignItems:'center',gap:8}}><AppIcon name="assistant" size={16} color={C.purple}/><Text style={{color:C.white,fontWeight:'800',fontSize:14}}>Chào bạn, CineHunt AI đây!</Text></View>
             <Text style={{color:C.muted,lineHeight:21,marginTop:8}}>Bạn muốn tìm phim hay, chọn rạp hay hỏi lịch chiếu hôm nay?</Text>
           </View>}
           {messages.map((m,i)=><View key={`${i}-${m.role}`} style={{alignSelf:m.role==='user'?'flex-end':'flex-start',
             maxWidth:'89%',paddingHorizontal:14,paddingVertical:11,borderRadius:17,marginTop:12,
             backgroundColor:m.role==='user'?C.purple:C.panel,borderWidth:1,borderColor:m.role==='user'?C.purple:C.stroke}}>
-            <Text style={{fontSize:10,fontWeight:'900',marginBottom:6,color:m.role==='user'?C.bg:C.cyan}}>
-              {m.role==='user'?'BẠN':'✦  CINEHUNT AI'}</Text>
+            <View style={{flexDirection:'row',alignItems:'center',gap:5,marginBottom:6}}>
+              {m.role==='assistant'&&<AppIcon name="assistant" size={11} color={C.cyan}/>}
+              <Text style={{fontSize:10,fontWeight:'900',color:m.role==='user'?C.bg:C.cyan}}>{m.role==='user'?'BẠN':'CINEHUNT AI'}</Text>
+            </View>
+            {m.heading&&<View style={{flexDirection:'row',alignItems:'center',gap:7,marginBottom:6}}>
+              <AppIcon name={m.heading.icon} size={16} color={C.purple}/>
+              <Text style={{flex:1,color:C.white,fontSize:14,lineHeight:21,fontWeight:'700'}}>{m.heading.text}</Text>
+            </View>}
             <Text style={{color:m.role==='user'?C.bg:C.white,fontSize:14,lineHeight:21}}>{m.content}</Text>
             {m.routeLinks?.map((link,j)=><Pressable key={j} accessibilityRole="link"
               onPress={()=>{if(link.url.startsWith('https://www.google.com/maps/dir/?api=1'))void Linking.openURL(link.url)}}
-              style={{marginTop:10,paddingVertical:9,borderRadius:10,backgroundColor:C.bg,paddingHorizontal:10}}>
-              <Text style={{fontWeight:'800',color:C.purple}}>{link.label} ↗</Text>
+              style={{marginTop:10,minHeight:44,flexDirection:'row',alignItems:'center',gap:6,justifyContent:'center',borderRadius:10,backgroundColor:C.bg,paddingHorizontal:10}}>
+              <Text style={{fontWeight:'800',color:C.purple,flexShrink:1}}>{link.label}</Text><AppIcon name="external" size={15} color={C.purple}/>
             </Pressable>)}
           </View>)}
-          {busy&&<Text style={{color:C.purple,marginTop:13,fontSize:12}}>✦  Đang trả lời...</Text>}
+          {busy&&<View accessibilityLiveRegion="polite" style={{flexDirection:'row',alignItems:'center',gap:7,marginTop:13}}><AppIcon name="assistant" size={13} color={C.purple}/><Text style={{color:C.purple,fontSize:12}}>Đang trả lời...</Text></View>}
           {!!error&&<View style={{marginTop:12,backgroundColor:C.panel,borderRadius:13,padding:12}}>
             <Text style={{color:C.white,fontSize:12,lineHeight:18}}>{error}</Text>
             {messages.at(-1)?.role==='user'&&<Pressable onPress={retry} disabled={busy} accessibilityRole="button"
-              style={{paddingVertical:10}}><Text style={{color:C.cyan,fontWeight:'900'}}>↻  Thử gửi lại</Text></Pressable>}
+              style={{minHeight:44,flexDirection:'row',alignItems:'center',gap:7}}><AppIcon name="refresh" size={16} color={C.cyan}/><Text style={{color:C.cyan,fontWeight:'900'}}>Thử gửi lại</Text></Pressable>}
           </View>}
         </ScrollView>
         <View style={{paddingHorizontal:15,paddingTop:12,paddingBottom:12,borderTopWidth:1,borderTopColor:C.stroke}}>
@@ -167,14 +185,15 @@ export default function ChatAssistant({visible,token,onClose,onAuth}:Props){
                 borderColor:C.stroke,backgroundColor:C.panel,color:C.white,paddingHorizontal:13,fontSize:14}}/>
             <Pressable disabled={busy||!draft.trim()} onPress={send} accessibilityRole="button"
               accessibilityLabel="Gửi tin nhắn" accessibilityState={{disabled:busy||!draft.trim()}}
-              style={{height:47,paddingHorizontal:15,borderRadius:14,alignItems:'center',justifyContent:'center',
+              style={{height:47,paddingHorizontal:15,borderRadius:14,flexDirection:'row',gap:7,alignItems:'center',justifyContent:'center',
                 backgroundColor:busy||!draft.trim()?C.panel:C.purple}}>
-              <Text style={{color:busy||!draft.trim()?C.muted:C.bg,fontWeight:'900'}}>Gửi ➤</Text>
+              <Text style={{color:busy||!draft.trim()?C.muted:C.bg,fontWeight:'900'}}>Gửi</Text><AppIcon name="send" size={16} color={busy||!draft.trim()?C.muted:C.bg}/>
             </Pressable>
           </View>}
           <Text style={{color:C.muted,fontSize:10,textAlign:'center',marginTop:9}}>
             AI chỉ tư vấn, không tự đặt vé hoặc thanh toán.</Text>
         </View>
+        <ThemeTransitionVeil/>
       </SafeAreaView>
     </KeyboardAvoidingView>
   </Modal>;

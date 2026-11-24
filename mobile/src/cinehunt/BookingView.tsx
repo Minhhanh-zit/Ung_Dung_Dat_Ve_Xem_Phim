@@ -2,11 +2,14 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {Alert,Text,View} from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import {api,ApiError,errorMessage,formatDate,formatMoney} from '../services/apiClient';
-import {Button,C,GlowPanel,Kicker,Loader,Notice,S,SectionHeading,SimpleScroll,StatusPill} from './ui';
+import {Button,GlowPanel,Kicker,Loader,Notice,SectionHeading,SimpleScroll,StatusPill} from './ui';
+import {AppIcon} from './icons';
+import {useCineHuntTheme} from './theme';
 import type {Booking,Payment,PaymentMethod,Ticket} from '../types';
 
 type Props={bookingId:string;token:string|null;ticketsOnly?:boolean;onAuth:()=>void;onCancelled:()=>void;onTickets:()=>void};
 export default function BookingView({bookingId,token,ticketsOnly=false,onAuth,onCancelled,onTickets}:Props){
+  const {C,S}=useCineHuntTheme();
   const [booking,setBooking]=useState<Booking|null>(null);
   const [payment,setPayment]=useState<Payment|null>(null);
   const [methods,setMethods]=useState<PaymentMethod[]>([]);
@@ -82,13 +85,13 @@ export default function BookingView({bookingId,token,ticketsOnly=false,onAuth,on
         <Text style={[S.muted,{textAlign:'center',fontSize:11,marginTop:18}]}>Vé có thể chỉ dùng một lần và chịu giới hạn thời gian check-in. Giữ kín mã vé của bạn.</Text>
       </View>
     </View>)}
-    <Button title="↻  Làm mới vé từ hệ thống" kind="outline" disabled={loading} onPress={()=>void load()}/>
+    <Button title="Làm mới vé từ hệ thống" icon="refresh" kind="outline" disabled={loading} onPress={()=>void load()}/>
   </SimpleScroll>;
   return <SimpleScroll>
     <View style={{marginTop:7,marginBottom:17}}><Kicker>YOUR BOOKING</Kicker><Text style={[S.title,{marginTop:8}]}>Chi tiết đơn vé</Text><Text style={[S.muted,{marginTop:7}]}>Theo dõi trạng thái, thanh toán và vé điện tử.</Text></View>
     {loading&&<Loader/>}{!!error&&<Notice text={error} bad/>}{!!warning&&<Notice text={warning} bad/>}
     {booking&&<GlowPanel from="#442C69" to="#123047" style={{marginBottom:17}}>
-      <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}><Kicker color={C.heroCyan}>CINEHUNT BOOKING</Kicker><Text style={{color:'#E2D4FB',fontWeight:'900',fontSize:16}}>✦</Text></View>
+      <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}><Kicker color={C.heroCyan}>CINEHUNT BOOKING</Kicker><AppIcon name="tickets" size={20} color="#E2D4FB"/></View>
       <Text style={{color:C.hero,fontSize:23,fontWeight:'900',marginTop:14,lineHeight:28}}>{booking.showtime?.movie?.title||`Suất chiếu #${booking.showtimeId}`}</Text>
       <Text style={{color:'#C7CEE3',fontSize:11,marginTop:11}} numberOfLines={2}>Mã đơn: {booking.bookingCode}</Text>
       <View style={{marginTop:15}}><StatusPill status={booking.status}/></View>
@@ -97,7 +100,7 @@ export default function BookingView({bookingId,token,ticketsOnly=false,onAuth,on
       {!!booking.expiresAt&&<Text style={{color:'#C8CDE0',fontSize:11,marginTop:17}}>Hạn ghi trong đơn: {formatDate(booking.expiresAt)}</Text>}
       {payment?.paymentMethod==='CASH'&&<Text style={{color:'#C8CDE0',fontSize:11,marginTop:9}}>Thanh toán tiền mặt tại quầy có chính sách gia hạn riêng.</Text>}
       {booking.status==='PENDING_PAYMENT'&&<Notice text="Đơn chưa thanh toán thành công nên chưa có vé QR."/>}
-      {['PAID','CONFIRMED'].includes(booking.status)&&<Button title="▣  Xem vé QR của bạn  →" onPress={onTickets}/>} 
+      {['PAID','CONFIRMED'].includes(booking.status)&&<Button title="Xem vé QR của bạn" icon="qr" iconRight="forward" onPress={onTickets}/>}
     </GlowPanel>}
     {booking?.status==='PENDING_PAYMENT'&&verified&&<>
       <SectionHeading title="Phương thức thanh toán" subtitle="Chỉ sử dụng các lựa chọn Backend đang cho phép"/>
@@ -111,14 +114,14 @@ export default function BookingView({bookingId,token,ticketsOnly=false,onAuth,on
           {payment.paymentMethod==='CASH'&&<Notice text="Vui lòng đến quầy CineHunt để nhân viên xác nhận thanh toán tiền mặt."/>}
         </>:<>
           <Text style={[S.muted,{marginBottom:12}]}>Tạo giao dịch không đồng nghĩa đã thanh toán. Không có trừ tiền tự động ở bước này.</Text>
-          {methods.map(m=><Button key={m.code} title={`${selected===m.code?'◉':'○'}  ${m.name}`} kind={selected===m.code?'primary':'muted'} onPress={()=>setSelected(m.code as 'BANKING'|'CASH')}/>)}
-          <Button title="Tạo giao dịch chờ xác nhận" disabled={loading||methods.length===0} onPress={()=>Alert.alert('Tạo giao dịch?',`Chọn ${selected}? Giao dịch chỉ ở trạng thái PENDING, chưa trừ tiền.`,[{text:'Quay lại',style:'cancel'},{text:'Tạo giao dịch',onPress:()=>void createPayment()}])}/>
+          {methods.map(m=><Button key={m.code} title={m.name} icon={selected===m.code?'radioOn':'radio'} accessibilityLabel={selected===m.code?`${m.name}, đang chọn`:m.name} kind={selected===m.code?'primary':'muted'} onPress={()=>setSelected(m.code as 'BANKING'|'CASH')}/>)}
+          <Button title="Tạo giao dịch chờ xác nhận" icon="card" disabled={loading||methods.length===0} onPress={()=>Alert.alert('Tạo giao dịch?',`Chọn ${selected}? Giao dịch chỉ ở trạng thái PENDING, chưa trừ tiền.`,[{text:'Quay lại',style:'cancel'},{text:'Tạo giao dịch',onPress:()=>void createPayment()}])}/>
         </>}
-        <Button title="↻  Kiểm tra trạng thái thanh toán" kind="outline" disabled={loading} onPress={()=>void load()}/>
+        <Button title="Kiểm tra trạng thái thanh toán" icon="refresh" kind="outline" disabled={loading} onPress={()=>void load()}/>
       </View>
       <Button title="Hủy đơn chưa thanh toán" kind="danger" disabled={loading} onPress={()=>Alert.alert('Xác nhận hủy','Đơn PENDING_PAYMENT sẽ bị hủy và ghế được giải phóng. Tiếp tục?', [{text:'Không',style:'cancel'},{text:'Hủy đơn',style:'destructive',onPress:()=>void cancelBooking()}])}/>
     </>}
     {booking&&!['PENDING_PAYMENT','PAID','CONFIRMED'].includes(booking.status)&&<Notice text={`Đơn hiện ở trạng thái ${booking.status}; không thể tự thanh toán tiếp.`}/>}
-    <View style={{marginTop:15}}><Button title="↻  Làm mới từ SQL Server" kind="outline" disabled={loading} onPress={()=>void load()}/></View>
+    <View style={{marginTop:15}}><Button title="Làm mới từ SQL Server" icon="refresh" kind="outline" disabled={loading} onPress={()=>void load()}/></View>
   </SimpleScroll>;
 }

@@ -1,3 +1,4 @@
+import { isCouple, seatGroup } from '../utils/coupleSeats'; // CINEHUNT_COUPLE_PAIR_V1
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -8,6 +9,7 @@ import type { SeatDto } from "../types/seat.types";
 import type { Seat } from "../hooks/useSeatHold";
 import axiosClient from "../api/axiosClient";
 import { getMovieById } from "../api/movieApi";
+import AgeAdmissionGate from '../components/AgeAdmissionGate';
 
 import { seatService } from "../api/seat.service";
 import type { HoldItem } from "../api/seat.service";
@@ -83,6 +85,14 @@ function logMockFallback(reason: MockReason, detail?: unknown) {
 }
 
 export default function SeatBookingPage() {
+  const params = useParams<{ id?: string; movieId?: string }>();
+  const [searchParams] = useSearchParams();
+  const movieId = params.id ?? params.movieId ?? '';
+  const showtimeId = searchParams.get('showtimeId') ?? '';
+  return <AgeAdmissionGate key={`${movieId}:${showtimeId}`} movieId={movieId} showtimeId={showtimeId}><SeatBookingContent /></AgeAdmissionGate>;
+}
+
+function SeatBookingContent() {
   const params  = useParams<{ id?: string; movieId?: string }>();
   const movieId = params.id ?? params.movieId;
 
@@ -295,11 +305,15 @@ export default function SeatBookingPage() {
       setNavError('');
     }
 
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(seatId)) { next.delete(seatId); }
-      else { if (next.size >= MAX_SEATS) return prev; next.add(seatId); }
-      return next;
+    const seat=seats.find(s=>String(s.id)===seatId);if(!seat)return;
+    const group=seatGroup(seats,seat);
+    if(isCouple(seat)&&group.length!==2)return;
+    const ids=group.map(s=>String(s.id));
+    setSelectedIds(prev=>{
+      const next=new Set(prev);
+      if(ids.some(id=>next.has(id))){ids.forEach(id=>next.delete(id));return next;}
+      if(group.some(s=>s.status!=='AVAILABLE')||next.size+ids.length>MAX_SEATS)return prev;
+      ids.forEach(id=>next.add(id));return next;
     });
   };
 

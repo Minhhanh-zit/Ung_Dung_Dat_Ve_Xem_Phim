@@ -26,7 +26,8 @@ export function normalizeMovie(item: Record<string, unknown>): Movie {
     backdrop_url: (item.bannerUrl ?? item.banner_url ?? item.backdrop_url) as string | undefined,
     description: (item.description ?? item.overview) as string | undefined,
     trailer_url: (item.trailerUrl ?? item.trailer_url) as string | undefined,
-    status: (item.status ?? 'NOW_SHOWING') as Movie['status'],
+    status: (item.status ?? 'HIDDEN') as Movie['status'],
+    hasEarlyShowtime: item.hasEarlyShowtime === true,
     genres: genreObjs.map((g) => g.name).filter(Boolean),
     genre_ids: genreObjs.map((g) => g.id).filter((id) => id > 0),
     release_date: (item.releaseDate ?? item.release_date) as string | null | undefined,
@@ -105,6 +106,21 @@ export async function getMovies(params?: {
   } catch (err) {
     throw apiError(err, 'Không tải được danh sách phim');
   }
+}
+
+// Fetch every public catalogue page, not just the first 50.
+export async function getPublicMovies(): Promise<{ items: Movie[]; total: number }> {
+  const items: Movie[] = [];
+  for (let page = 1; page <= 100; page += 1) {
+    const payload = await axiosClient.get('/movies/catalog', { params: { page, limit: 50 } }) as unknown;
+    const rows = unwrapList(payload);
+    const total = Number((payload as Record<string, unknown>)?.total);
+    if (!Number.isSafeInteger(total) || total < 0) throw new Error('Danh mục phim không hợp lệ');
+    items.push(...rows.map(normalizeMovie));
+    if (items.length >= total) return { items, total };
+    if (rows.length === 0) throw new Error('Danh mục phim thay đổi, hãy tải lại');
+  }
+  throw new Error('Danh mục phim quá lớn, hãy thử lại');
 }
 
 export async function getMovieById(id: number): Promise<Movie> {

@@ -9,6 +9,7 @@ export interface Movie {
   trailer_url?: string;
   status: 'NOW_SHOWING' | 'COMING_SOON' | 'ENDED' | 'HIDDEN';
 
+  hasEarlyShowtime?: boolean;
   genres: string[];
 
   genre_ids?: number[];
