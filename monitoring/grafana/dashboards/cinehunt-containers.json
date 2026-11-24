@@ -1,0 +1,17 @@
+{
+  "uid": "cinehunt-local",
+  "title": "CineHunt - Docker local",
+  "description": "Container metrics from cAdvisor. Not native Windows host metrics, business metrics, or restart counts. Empty panels require checking cAdvisor labels and Docker Desktop compatibility.",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "refresh": "15s",
+  "timezone": "browser",
+  "time": {"from": "now-15m", "to": "now"},
+  "templating": {"list": [{"name": "project", "label": "Compose project", "type": "textbox", "query": "cinehunt-prod", "current": {"text": "cinehunt-prod", "value": "cinehunt-prod"}}]},
+  "panels": [
+    {"id":1,"title":"CPU usage (100% = one CPU core)","type":"timeseries","datasource":{"type":"prometheus","uid":"cinehunt-prometheus"},"gridPos":{"x":0,"y":0,"w":12,"h":8},"fieldConfig":{"defaults":{"unit":"percent","min":0},"overrides":[]},"targets":[{"refId":"A","expr":"100 * sum by (container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",container_label_com_docker_compose_project=\"$project\",image!=\"\"}[2m]))","legendFormat":"{{container_label_com_docker_compose_service}}"}]},
+    {"id":2,"title":"Memory working set","type":"timeseries","datasource":{"type":"prometheus","uid":"cinehunt-prometheus"},"gridPos":{"x":12,"y":0,"w":12,"h":8},"fieldConfig":{"defaults":{"unit":"bytes","min":0},"overrides":[]},"targets":[{"refId":"A","expr":"sum by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{job=\"cadvisor\",container_label_com_docker_compose_project=\"$project\",image!=\"\"})","legendFormat":"{{container_label_com_docker_compose_service}}"}]},
+    {"id":3,"title":"Network receive / transmit","type":"timeseries","datasource":{"type":"prometheus","uid":"cinehunt-prometheus"},"gridPos":{"x":0,"y":8,"w":24,"h":8},"fieldConfig":{"defaults":{"unit":"Bps","min":0},"overrides":[]},"targets":[{"refId":"A","expr":"sum by (container_label_com_docker_compose_service) (rate(container_network_receive_bytes_total{job=\"cadvisor\",container_label_com_docker_compose_project=\"$project\",interface!=\"lo\"}[2m]))","legendFormat":"{{container_label_com_docker_compose_service}} RX"},{"refId":"B","expr":"sum by (container_label_com_docker_compose_service) (rate(container_network_transmit_bytes_total{job=\"cadvisor\",container_label_com_docker_compose_project=\"$project\",interface!=\"lo\"}[2m]))","legendFormat":"{{container_label_com_docker_compose_service}} TX"}]}
+  ]
+}
