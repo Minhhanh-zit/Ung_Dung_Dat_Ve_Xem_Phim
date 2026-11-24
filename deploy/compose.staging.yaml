@@ -1,0 +1,195 @@
+name: cinehunt-staging
+
+# ARM64 Ubuntu VM staging stack.
+# SQL Server is deliberately external and hosted on the Mac's existing TEST SQL instance.
+# Never add the primary CineHuntDB or auto-run schema/seed/migrations here.
+
+services:
+  backend:
+    image: ghcr.io/minhhanh-zit/cinehunt-backend:${IMAGE_TAG:?Set IMAGE_TAG to a full Git commit SHA}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DB_HOST: ${STAGING_DB_HOST:?Set STAGING_DB_HOST to the Mac Tailscale IP}
+      DB_PORT: ${STAGING_DB_PORT:-14333}
+      DB_USERNAME: ${DB_USERNAME:?Set a staging SQL username}
+      DB_PASSWORD: ${DB_PASSWORD:?Set a staging-only SQL password}
+      DB_DATABASE: ${DB_DATABASE:-CineHunt_Test}
+      DB_ENCRYPT: "false"
+      DB_TRUST_SERVER_CERTIFICATE: "true"
+      DB_MIGRATIONS_RUN: "false"
+      JWT_SECRET: ${JWT_SECRET:?Set a unique staging JWT secret}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set a different staging refresh secret}
+      OTP_HASH_SECRET: ${OTP_HASH_SECRET:?Set a unique staging OTP secret}
+      OTP_EXPOSE_CODE_IN_DEV: "false"
+      RECOMMENDATION_SERVICE_URL: http://ai:8000
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
+      SWAGGER_ENABLED: "false"
+      ALLOW_DEMO_PAYMENT: "false"
+    expose:
+      - "3000"
+    volumes:
+      - staging_uploads:/app/uploads
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"
+      interval: 20s
+      timeout: 8s
+      retries: 6
+      start_period: 60s
+    networks:
+      - cinehunt
+
+  ai:
+    image: ghcr.io/minhhanh-zit/cinehunt-ai:${IMAGE_TAG:?Set IMAGE_TAG to a full Git commit SHA}
+    restart: unless-stopped
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "8000"
+      DB_HOST: ${STAGING_DB_HOST:?Set STAGING_DB_HOST to the Mac Tailscale IP}
+      DB_PORT: ${STAGING_DB_PORT:-14333}
+      DB_USERNAME: ${DB_USERNAME:?Set a staging SQL username}
+      DB_PASSWORD: ${DB_PASSWORD:?Set a staging-only SQL password}
+      DB_DATABASE: ${DB_DATABASE:-CineHunt_Test}
+      DB_CONNECTOR: pyodbc
+      DB_ODBC_DRIVER: "ODBC Driver 18 for SQL Server"
+      AUTO_TRAIN_ON_START: "false"
+    expose:
+      - "8000"
+    volumes:
+      - staging_ai_models:/app/model
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
+      interval: 20s
+      timeout: 8s
+      retries: 5
+      start_period: 45s
+    networks:
+      - cinehunt
+
+  admin-web:
+    image: ghcr.io/minhhanh-zit/cinehunt-admin-web:${IMAGE_TAG:?Set IMAGE_TAG to a full Git commit SHA}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BACKEND_URL: http://backend:3000
+      NGINX_RESOLVER: "127.0.0.11"
+    ports:
+      - "127.0.0.1:8080:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - cinehunt
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.61.1
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=15s
+    expose:
+      - "8080"
+    networks:
+      - cinehunt
+
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    restart: unless-stopped
+    pid: host
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/containerd/.+)($|/)
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro,rslave
+    expose:
+      - "9100"
+    networks:
+      - cinehunt
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.29.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/blackbox_exporter/config.yml
+    volumes:
+      - ./monitoring/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    expose:
+      - "9115"
+    networks:
+      - cinehunt
+
+  prometheus:
+    image: prom/prometheus:v3.16.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - cadvisor
+      - node-exporter
+      - blackbox-exporter
+    networks:
+      - cinehunt
+
+  grafana:
+    image: grafana/grafana:13.3.1
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?Set GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set a strong Grafana password}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    ports:
+      - "127.0.0.1:3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - cinehunt
+
+networks:
+  cinehunt:
+    driver: bridge
+
+volumes:
+  staging_uploads:
+  staging_ai_models:
+  prometheus_data:
+  grafana_data:
