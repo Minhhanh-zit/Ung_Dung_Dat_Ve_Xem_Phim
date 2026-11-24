@@ -1,5 +1,6 @@
 import React from 'react';
 import BookingStatusBadge from './BookingStatusBadge';
+import PaymentConfirmationButton from './PaymentConfirmationButton';
 import { TableShell, Td, Th, formatDateTime, formatVnd } from './AdminUI';
 import type { AdminBooking } from '../../types/admin';
 
@@ -22,7 +23,7 @@ const BookingTable: React.FC<Props> = ({ bookings, onConfirmBank }) => (
               <Th>Ghế</Th>
               <Th>Tổng tiền</Th>
               <Th>Thanh toán</Th>
-              <Th>Đối soát</Th>
+              <Th>Xác nhận thu tiền</Th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">
@@ -39,10 +40,7 @@ const BookingTable: React.FC<Props> = ({ bookings, onConfirmBank }) => (
                 </Td>
                 <Td>
                   {b.status === 'PENDING_PAYMENT' && b.paymentStatus === 'PENDING' && onConfirmBank && (
-                    <button type="button" onClick={() => onConfirmBank(b)}
-                      className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-bold text-white hover:bg-blue-600">
-                      Kiểm tra chuyển khoản
-                    </button>
+                    <PaymentConfirmationButton booking={b} onConfirmBank={onConfirmBank} />
                   )}
                 </Td>
               </tr>
@@ -74,10 +72,9 @@ const BookingTable: React.FC<Props> = ({ bookings, onConfirmBank }) => (
             ))}
           </dl>
           {b.status === 'PENDING_PAYMENT' && b.paymentStatus === 'PENDING' && onConfirmBank && (
-            <button type="button" onClick={() => onConfirmBank(b)}
-              className="mt-3 rounded-lg bg-blue-700 px-3 py-2 text-xs font-bold text-white">
-              Kiểm tra chuyển khoản
-            </button>
+            <div className="mt-3">
+              <PaymentConfirmationButton booking={b} onConfirmBank={onConfirmBank} />
+            </div>
           )}
         </div>
       ))}
