@@ -39,6 +39,8 @@ services:
       DB_MIGRATIONS_RUN: "${DB_MIGRATIONS_RUN:-false}"
       JWT_SECRET: ${JWT_SECRET:?Set JWT access secret}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT refresh secret}
+      OTP_HASH_SECRET: ${OTP_HASH_SECRET:?Set OTP hash secret}
+      OTP_EXPOSE_CODE_IN_DEV: "${OTP_EXPOSE_CODE_IN_DEV:-false}"
       RECOMMENDATION_SERVICE_URL: http://ai:8000
       CORS_ORIGINS: ${CORS_ORIGINS:?Set allowed web origins}
       SWAGGER_ENABLED: "false"
