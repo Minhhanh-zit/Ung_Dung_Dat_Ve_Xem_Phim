@@ -284,7 +284,8 @@ Edit `~/.config/cinehunt/.env.staging`:
 - `STAGING_DB_HOST`: Mac Tailscale IPv4 address
 - `STAGING_DB_PORT`: `14333`
 - `DB_DATABASE`: `CineHunt_Test`
-- `DB_USERNAME`: `cinehunt_staging_app`\n- `DB_PASSWORD`: the generated password printed by the least-privilege login setup above
+- `DB_USERNAME`: `cinehunt_staging_app`
+- `DB_PASSWORD`: the generated password printed by the least-privilege login setup above
 - Generate separate secrets:
 
 ```bash
