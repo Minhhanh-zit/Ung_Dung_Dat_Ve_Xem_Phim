@@ -24,8 +24,6 @@ export class ShowtimeSeatsService {
   constructor(
     @InjectRepository(ShowtimeSeat)
     private readonly showtimeSeatRepository: Repository<ShowtimeSeat>,
-    @InjectRepository(SeatHold)
-    private readonly seatHoldRepository: Repository<SeatHold>,
     @InjectRepository(Showtime)
     private readonly showtimeRepository: Repository<Showtime>,
     private readonly seatHoldService: SeatHoldService,

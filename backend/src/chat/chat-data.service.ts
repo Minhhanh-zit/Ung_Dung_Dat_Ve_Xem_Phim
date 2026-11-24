@@ -1,5 +1,5 @@
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Movie, MovieStatus } from '../entities/movie.entity';
@@ -100,7 +100,6 @@ export interface SeatAvailability {
 
 @Injectable()
 export class ChatDataService {
-  private readonly logger = new Logger(ChatDataService.name);
 
   constructor(
     @InjectRepository(Movie)

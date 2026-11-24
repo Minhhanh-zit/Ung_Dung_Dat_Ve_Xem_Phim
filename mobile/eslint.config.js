@@ -7,4 +7,19 @@ module.exports = defineConfig([
   {
     ignores: ['dist/*'],
   },
+  {
+    files: ['tests/**/*.jest.test.tsx'],
+    languageOptions: {
+      globals: {
+        afterEach: 'readonly',
+        beforeEach: 'readonly',
+        describe: 'readonly',
+        expect: 'readonly',
+        jest: 'readonly',
+        require: 'readonly',
+        test: 'readonly',
+        process: 'readonly',
+      },
+    },
+  },
 ]);

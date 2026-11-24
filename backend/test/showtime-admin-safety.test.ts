@@ -4,17 +4,15 @@ import { test } from 'node:test';
 import type { DataSource, EntityManager, FindManyOptions, Repository } from 'typeorm';
 import { ShowtimeService } from '../src/showtime/showtime.service';
 import { Showtime } from '../src/entities/showtime.entity';
-import { Room } from '../src/entities/room.entity';
+
 import { ShowtimeSeat } from '../src/entities/showtime-seat.entity';
-import { Seat } from '../src/entities/seat.entity';
+
 import type { CreateShowtimeDto } from '../src/showtime/dto/create-showtime.dto';
 
 function serviceWithRepo(repo: Partial<Repository<Showtime>>, db?: DataSource): ShowtimeService {
   return new ShowtimeService(
     repo as Repository<Showtime>,
     {} as Repository<ShowtimeSeat>,
-    {} as Repository<Room>,
-    {} as Repository<Seat>,
     db ?? ({} as DataSource),
   );
 }

@@ -20,6 +20,8 @@ services:
       ALLOW_DEMO_PAYMENT: 'false'
       JWT_SECRET: ${JWT_SECRET:?Provide unique JWT secret}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Provide a different JWT secret}
+      OTP_HASH_SECRET: ${OTP_HASH_SECRET:?Provide unique OTP hash secret}
+      OTP_EXPOSE_CODE_IN_DEV: 'false'
       RECOMMENDATION_SERVICE_URL: http://ai:8000
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
       SWAGGER_ENABLED: 'false'

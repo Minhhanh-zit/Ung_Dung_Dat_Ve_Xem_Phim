@@ -8,6 +8,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores([
     'dist',
+    'coverage/**',
     '.stitch-v2.3-backup-*',
     '**/.stitch-v2.3-backup-*/**',
   ]),

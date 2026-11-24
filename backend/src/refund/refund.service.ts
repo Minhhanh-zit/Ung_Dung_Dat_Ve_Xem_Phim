@@ -25,8 +25,6 @@ export class RefundService {
     private readonly repo: Repository<Refund>,
     @InjectRepository(BookingOrder)
     private readonly bookingRepo: Repository<BookingOrder>,
-    @InjectRepository(Payment)
-    private readonly paymentRepo: Repository<Payment>,
     private readonly dataSource: DataSource,
   ) {}
 

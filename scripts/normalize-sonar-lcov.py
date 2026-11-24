@@ -3,6 +3,7 @@
 
 Usage: python3 scripts/normalize-sonar-lcov.py backend
        python3 scripts/normalize-sonar-lcov.py admin-web
+       python3 scripts/normalize-sonar-lcov.py mobile
 """
 from __future__ import annotations
 
@@ -12,6 +13,7 @@ from pathlib import Path
 REPORTS = {
     "backend": Path("backend/coverage/lcov.info"),
     "admin-web": Path("admin-web/coverage/lcov.info"),
+    "mobile": Path("mobile/coverage/lcov.info"),
 }
 
 
@@ -35,7 +37,7 @@ def normalize_source(raw: str, component: str, root: Path) -> str | None:
 
 def main() -> int:
     if len(sys.argv) != 2 or sys.argv[1] not in REPORTS:
-        print("Usage: normalize-sonar-lcov.py <backend|admin-web>")
+        print("Usage: normalize-sonar-lcov.py <backend|admin-web|mobile>")
         return 2
 
     component = sys.argv[1]

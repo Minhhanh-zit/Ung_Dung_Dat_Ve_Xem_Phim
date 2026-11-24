@@ -10,9 +10,6 @@ function createService(dataSource: any) {
     {} as any,
     {} as any,
     {} as any,
-    {} as any,
-    {} as any,
-    {} as any,
     dataSource as any,
   );
 }

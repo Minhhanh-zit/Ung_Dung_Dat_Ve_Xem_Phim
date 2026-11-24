@@ -1,0 +1,28 @@
+import {describe,it,expect,vi,beforeEach} from 'vitest';
+import {render,screen,fireEvent,waitFor} from '@testing-library/react';
+import {MemoryRouter} from 'react-router-dom';
+import SeatMap from '../src/components/seat/SeatMap';
+import SeatItem from '../src/components/seat/SeatItem';
+import AgeAdmissionGate from '../src/components/AgeAdmissionGate';
+import {seatGroup,isCouple} from '../src/utils/coupleSeats';
+import type {SeatDto} from '../src/types/seat.types';
+const {get}=vi.hoisted(()=>({get:vi.fn()}));
+vi.mock('../src/api/axiosClient',()=>({default:{get}}));
+const seat=(id:number,rowName:string,seatNumber:number,type='CH_STANDARD',status:SeatDto['status']='AVAILABLE',price=75000):SeatDto=>({id,rowName,seatNumber,type,status,price});
+const a=seat(1,'A',1), b=seat(2,'D',1,'CH_VIP'), j1=seat(3,'J',1,'CH_COUPLE'),j2=seat(4,'J',2,'CH_COUPLE');
+describe('seat map and pair rules',()=>{
+ it('groups adjacent couple seats only in same row and sorts both directions',()=>{expect(isCouple(j1)).toBe(true);expect(isCouple(a)).toBe(false);expect(seatGroup([a,j2,j1],j2)).toEqual([j1,j2]);expect(seatGroup([a,j2,j1],j1)).toEqual([j1,j2]);expect(seatGroup([j1,seat(8,'I',2,'CH_COUPLE')],j1)).toEqual([j1]);expect(seatGroup([a],a)).toEqual([a]);});
+ it('renders seat types, grouped price, sold seats and selection actions',()=>{const toggle=vi.fn();render(<SeatMap seats={[j2,b,a,j1,seat(5,'A',2,'CH_STANDARD','SOLD'),seat(6,'D',2,'CH_VIP','HELD'),seat(7,'A',3,'CH_STANDARD','BLOCKED'),seat(8,'A',4,'CH_STANDARD','BOOKED'),seat(9,'D',3,'CH_VIP','AVAILABLE',90000)]} selectedIds={new Set(['1'])} onSeatToggle={toggle}/>);expect(screen.getByRole('button',{name:/Ghế A1/})).toHaveAttribute('aria-pressed','true');fireEvent.click(screen.getByRole('button',{name:/Ghế A1/}));expect(toggle).toHaveBeenCalledWith('1');fireEvent.click(screen.getByRole('button',{name:/Ghế J1/}));expect(toggle).toHaveBeenCalledWith('3');for(const label of [/Ghế A2/,/Ghế D2/,/Ghế A3/,/Ghế A4/])expect(screen.getByRole('button',{name:label})).toBeDisabled();expect(screen.getByText(/150.000 đ \/ cặp/)).toBeInTheDocument();});
+ it('enforces selection limit, incomplete pairs and a held partner',()=>{const toggle=vi.fn();const {rerender}=render(<SeatMap seats={[a,j1,j2]} selectedIds={new Set(['1'])} maxSeats={2} onSeatToggle={toggle}/>);fireEvent.click(screen.getByRole('button',{name:/Ghế J1/}));expect(screen.getByRole('alert')).toHaveTextContent('tối đa 2');expect(toggle).not.toHaveBeenCalled();rerender(<SeatMap seats={[j1]} showLegend={false}/>);expect(screen.getByRole('button',{name:/Ghế J1/})).toBeDisabled();rerender(<SeatMap seats={[j1,j2]} heldIds={new Set(['4'])}/>);expect(screen.getByRole('button',{name:/Ghế J1/})).toBeDisabled();});
+ it('seat item honors selected, blocked, missing price and pair label',()=>{const click=vi.fn();const {rerender}=render(<SeatItem seat={{...a,price:undefined}} selected={false} onClick={click}/>);expect(screen.getByRole('button')).toHaveAttribute('title',expect.stringContaining('Chưa có giá'));fireEvent.click(screen.getByRole('button'));expect(click).toHaveBeenCalledOnce();rerender(<SeatItem seat={j1} pairLabel="J1–J2" selected onClick={click}/>);expect(screen.getByRole('button')).toHaveAttribute('aria-pressed','true');rerender(<SeatItem seat={b} disabled selected={false} onClick={click}/>);expect(screen.getByRole('button')).toBeDisabled();});
+});
+const policy=(action:string,extra:object={})=>({showtimeId:1,movieId:2,movieTitle:'Film',rating:'T16',action,message:'Age policy',confirmLabel:action==='CONFIRM'?'Tôi xác nhận':null,...extra});
+const gate=(showtimeId='1',movieId='2')=>render(<MemoryRouter><AgeAdmissionGate showtimeId={showtimeId} movieId={movieId}><p>Booking content</p></AgeAdmissionGate></MemoryRouter>);
+describe('age admission gate',()=>{beforeEach(()=>get.mockReset());
+ it('allows eligible age',async()=>{get.mockResolvedValue(policy('ALLOW'));gate();expect(await screen.findByText('Booking content')).toBeInTheDocument();});
+ it('requires explicit confirmation',async()=>{get.mockResolvedValue(policy('CONFIRM'));gate();const confirm=await screen.findByRole('button',{name:'Tôi xác nhận'});expect(screen.queryByText('Booking content')).toBeNull();fireEvent.click(confirm);expect(screen.getByText('Booking content')).toBeInTheDocument();});
+ it('blocks restricted policy',async()=>{get.mockResolvedValue(policy('BLOCK'));gate();expect(await screen.findByText('Age policy')).toBeInTheDocument();expect(screen.queryByText('Booking content')).toBeNull();fireEvent.click(screen.getByRole('button',{name:'Quay lại'}));});
+ it('rejects wrong IDs and retries on API errors',async()=>{get.mockResolvedValueOnce(policy('ALLOW',{movieId:99})).mockResolvedValueOnce(policy('ALLOW'));gate();expect(await screen.findByRole('alert')).toHaveTextContent('Không xác minh');fireEvent.click(screen.getByRole('button',{name:'Thử lại'}));expect(await screen.findByText('Booking content')).toBeInTheDocument();expect(get).toHaveBeenCalledTimes(2);});
+ it('rejects malformed ids without network call',async()=>{gate('x','bad');await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('Chưa chọn'));expect(get).not.toHaveBeenCalled();});
+ it.each([policy('UNKNOWN'),policy('CONFIRM',{confirmLabel:null}),policy('ALLOW',{message:4}),policy('ALLOW',{showtimeId:8})])('rejects malformed responses %#',async(p)=>{get.mockResolvedValue(p);gate();expect(await screen.findByRole('alert')).toBeInTheDocument();});
+});

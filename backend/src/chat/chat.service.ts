@@ -334,24 +334,6 @@ export class ChatService implements OnModuleInit {
     return merged;
   }
 
-  private requireApiKey(): string {
-    const apiKey = this.apiKey;
-
-    if (!apiKey) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.SERVICE_UNAVAILABLE,
-          code: 'MISSING_API_KEY' as ChatErrorCode,
-          message:
-            'Backend chưa cấu hình GEMINI_API_KEY. Thêm biến này vào .env rồi khởi động lại server.',
-        },
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
-    }
-
-    return apiKey;
-  }
-
   private get requestBody() {
     return {
       systemInstruction: {

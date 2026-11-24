@@ -24,9 +24,6 @@ test('booking expiry bỏ qua ngay khi lifecycle app-lock đang bận', async ()
     {} as any,
     {} as any,
     {} as any,
-    {} as any,
-    {} as any,
-    {} as any,
     { createQueryRunner: () => queryRunner } as any,
   );
 
@@ -41,7 +38,6 @@ test('booking expiry bỏ qua ngay khi lifecycle app-lock đang bận', async ()
 
 test('seat hold maintenance hiểu kết quả skipped từ stored procedure', async () => {
   const service = new ShowtimeSeatsService(
-    {} as any,
     {} as any,
     {} as any,
     {} as any,
@@ -65,7 +61,6 @@ test('seat hold maintenance hiểu kết quả skipped từ stored procedure', a
 
 test('seat hold maintenance không biến driver 15s timeout thành scheduler error', async () => {
   const service = new ShowtimeSeatsService(
-    {} as any,
     {} as any,
     {} as any,
     {} as any,

@@ -11,17 +11,17 @@ không chạy migration/seed SQL Server, không thay đổi workflows CI/CD có 
 | Backend NestJS | Node.js `node:test` + ts-node | LCOV | `backend/coverage/lcov.info` |
 | Admin Web | Vitest + V8 | LCOV | `admin-web/coverage/lcov.info` |
 | AI | Python smoke test + coverage.py | Cobertura XML | `ai/coverage.xml` |
-| Mobile Expo | Node.js test với `vm` / transpile TS | **Chưa đo coverage đáng tin cậy** | Không import |
+| Mobile Expo | Node.js regression + Vitest component/logic tests (native adapters mocked) | LCOV | `mobile/coverage/lcov.info` |
 
-Mobile vẫn được SonarQube phân tích **chất lượng code** trong `mobile/src`,
-nhưng test hiện tại chưa instrument toàn bộ mã ứng dụng. Không ghi
-Mobile coverage = 100% hoặc cộng nhầm số của tests vào source.
-Cần bổ sung bộ test React Native/Expo có coverage instrumented trong tương lai.
+Mobile được đo bằng V8 trên source TypeScript/TSX thật qua Vitest, với adapter
+native, animation, storage và API mô phỏng trong test. Đây là kiểm thử component
+và logic, không thay thế E2E trên thiết bị iOS/Android. Không làm giả coverage,
+không loại trừ source Mobile. Báo cáo chỉ được import khi job test thành công.
 
 ## Luồng hoạt động
 
-1. Push/PR kích hoạt ba job coverage độc lập, dùng test hiện có.
-2. Job Backend và Web sinh LCOV; script
+1. Push/PR kích hoạt bốn job coverage độc lập, dùng test hiện có.
+2. Job Backend, Web và Mobile sinh LCOV; script
    `scripts/normalize-sonar-lcov.py` chuẩn hóa paths theo cấu trúc monorepo,
    kiểm tra có bản ghi source thực tế.
 3. Job AI tạo Cobertura XML; xác minh path trỏ đến `ai/app`.
@@ -46,10 +46,10 @@ Cần bổ sung bộ test React Native/Expo có coverage instrumented trong tư�
 
 ## Kiểm chứng và minh chứng báo cáo
 
-- GitHub Actions: job Backend LCOV, Admin Web LCOV, AI Python Coverage,
+- GitHub Actions: job Backend LCOV, Admin Web LCOV, Mobile LCOV, AI Python Coverage,
   SonarQube Analysis + Quality Gate cùng đạt yêu cầu.
 - Download từng artifact `cinehunt-backend-lcov`, `cinehunt-web-lcov`,
-  `cinehunt-ai-coverage` để đối chiếu khi cần.
+  `cinehunt-ai-coverage`, `cinehunt-mobile-lcov` để đối chiếu khi cần.
 - SonarQube: Overview/Measures/Quality Gate, số liệu coverage theo thư mục,
   tỷ lệ duplication và các issues còn tồn tại.
 - Chụp màn hình kèm commit SHA, ngày chạy và rõ loại kiểm thử được đo.

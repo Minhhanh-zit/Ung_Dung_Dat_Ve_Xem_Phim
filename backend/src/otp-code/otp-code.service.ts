@@ -25,7 +25,7 @@ export class OtpCodeService {
   constructor(
     @InjectRepository(OtpCode)
     private readonly repo: Repository<OtpCode>,
-    private readonly configService: ConfigService,
+    configService: ConfigService,
   ) {
     this.hashSecret = configService.getOrThrow<string>('OTP_HASH_SECRET');
     this.exposeCodeInDevelopment =

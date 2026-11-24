@@ -26,7 +26,6 @@ function createService() {
     find: async () => [],
   };
 
-  const seatHoldRepository = {};
 
   const showtimeRepository = {
     findOne: async () => null,
@@ -51,7 +50,6 @@ function createService() {
 
   const service = new ShowtimeSeatsService(
     showtimeSeatRepository as any,
-    seatHoldRepository as any,
     showtimeRepository as any,
     seatHoldService as any,
     dataSource as any,

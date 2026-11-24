@@ -41,18 +41,12 @@ export class BookingService {
   constructor(
     @InjectRepository(BookingOrder)
     private readonly bookingRepo: Repository<BookingOrder>,
-    @InjectRepository(BookingDetail)
-    private readonly detailRepo: Repository<BookingDetail>,
-    @InjectRepository(ShowtimeSeat)
-    private readonly showtimeSeatRepo: Repository<ShowtimeSeat>,
     @InjectRepository(SeatHold)
     private readonly holdRepo: Repository<SeatHold>,
     @InjectRepository(Voucher)
     private readonly voucherRepo: Repository<Voucher>,
     @InjectRepository(ConcessionCombo)
     private readonly productRepo: Repository<ConcessionCombo>,
-    @InjectRepository(BookingCombo)
-    private readonly bookingComboRepo: Repository<BookingCombo>,
     private readonly dataSource: DataSource,
   ) {}
 

@@ -16,8 +16,6 @@ export class SeatHoldService {
   constructor(
     @InjectRepository(SeatHold)
     private readonly seatHoldRepository: Repository<SeatHold>,
-    @InjectRepository(ShowtimeSeat)
-    private readonly showtimeSeatRepository: Repository<ShowtimeSeat>,
     private readonly dataSource: DataSource,
   ) {}
 

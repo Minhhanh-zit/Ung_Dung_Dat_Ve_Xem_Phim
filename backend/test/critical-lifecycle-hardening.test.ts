@@ -76,7 +76,6 @@ test('releaseHold không nhả ghế nếu hold đã được booking xử lý',
 
   const service = new SeatHoldService(
     {} as any,
-    {} as any,
     { createQueryRunner: () => queryRunner } as any,
   );
 
@@ -148,7 +147,6 @@ test('refund approve hủy ticket trước khi trả ghế', async () => {
       }),
     } as any,
     {} as any,
-    {} as any,
     {
       transaction: async (
         callback: (manager: any) => Promise<unknown>,
@@ -215,7 +213,6 @@ test('refund approve từ chối ticket USED', async () => {
   const service = new RefundService(
     { findOne: async () => null } as any,
     {} as any,
-    {} as any,
     {
       transaction: async (
         callback: (manager: any) => Promise<unknown>,
@@ -273,8 +270,6 @@ test('cancel showtime vô hiệu hóa ticket/booking/hold và block ghế', asyn
   };
 
   const service = new ShowtimeService(
-    {} as any,
-    {} as any,
     {} as any,
     {} as any,
     {

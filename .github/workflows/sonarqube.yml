@@ -113,9 +113,44 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  mobile-coverage:
+    name: Mobile Tests + LCOV
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install Mobile dependencies
+        working-directory: mobile
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Type-check Mobile including Jest test files
+        working-directory: mobile
+        run: npm run typecheck
+      - name: Lint Mobile
+        working-directory: mobile
+        run: npm run lint
+      - name: Run existing Node.js regression tests
+        working-directory: mobile
+        run: npm run test:node
+      - name: Run Expo Jest component tests and generate LCOV
+        working-directory: mobile
+        run: npm run test:coverage
+      - name: Verify real Mobile source coverage and normalize paths
+        run: python3 scripts/normalize-sonar-lcov.py mobile
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cinehunt-mobile-lcov
+          path: mobile/coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 14
+
   sonarqube:
     name: SonarQube Analysis + Quality Gate
-    needs: [backend-coverage, web-coverage, ai-coverage]
+    needs: [backend-coverage, web-coverage, ai-coverage, mobile-coverage]
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
@@ -141,11 +176,16 @@ jobs:
         with:
           name: cinehunt-ai-coverage
           path: ai
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: cinehunt-mobile-lcov
+          path: mobile/coverage
       - name: Verify coverage reports exist
         run: |
           test -s backend/coverage/lcov.info
           test -s admin-web/coverage/lcov.info
           test -s ai/coverage.xml
+          test -s mobile/coverage/lcov.info
       # Sonar TypeScript analyzer resolves Expo, Nest and Vite inherited
       # tsconfig files from node_modules. Coverage artifacts alone do not
       # contain those dependencies.

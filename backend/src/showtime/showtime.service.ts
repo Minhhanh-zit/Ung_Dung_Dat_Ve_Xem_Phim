@@ -27,10 +27,6 @@ export class ShowtimeService {
     private readonly showtimeRepository: Repository<Showtime>,
     @InjectRepository(ShowtimeSeat)
     private readonly showtimeSeatRepository: Repository<ShowtimeSeat>,
-    @InjectRepository(Room)
-    private readonly roomRepository: Repository<Room>,
-    @InjectRepository(Seat)
-    private readonly seatRepository: Repository<Seat>,
     private readonly dataSource: DataSource,
   ) {}
 
