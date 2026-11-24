@@ -82,6 +82,8 @@ export const cinemaApi = {
     post<Room>(`/cinemas/${cinemaId}/rooms`, payload),
   updateRoom: (cinemaId: number, roomId: number, payload: Partial<Room>) =>
     patch<Room>(`/cinemas/${cinemaId}/rooms/${roomId}`, payload),
+  generateRoomSeats: (cinemaId: number, roomId: number) =>
+    post<{ created: number; total: number }>(`/cinemas/${cinemaId}/rooms/${roomId}/seats/generate`),
   removeRoom: (cinemaId: number, roomId: number) =>
     del<{ success: boolean }>(`/cinemas/${cinemaId}/rooms/${roomId}`),
 };

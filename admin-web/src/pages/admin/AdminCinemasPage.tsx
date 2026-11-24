@@ -30,7 +30,7 @@ const emptyCinema: Partial<Cinema> = {
 const emptyRoom: Partial<Room> = {
   roomName: '',
   roomType: 'STANDARD',
-  totalSeats: 0,
+  totalSeats: 120,
 };
 
 export default function AdminCinemasPage() {
@@ -46,6 +46,7 @@ export default function AdminCinemasPage() {
   const [selected, setSelected] = useState<Cinema | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
+  const [generatingRoomId, setGeneratingRoomId] = useState<number | null>(null);
   const [roomForm, setRoomForm] = useState<Partial<Room> | null>(null);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [confirmDeleteRoom, setConfirmDeleteRoom] = useState<Room | null>(null);
@@ -132,19 +133,38 @@ export default function AdminCinemasPage() {
       return;
     }
     try {
-      const payload = { ...roomForm, totalSeats: Number(roomForm.totalSeats ?? 0) };
+      const payload = {
+        roomName: roomForm.roomName.trim(),
+        roomType: roomForm.roomType,
+        ...(editingRoom ? {} : { totalSeats: 120 }),
+      };
       if (editingRoom) {
         await cinemaApi.updateRoom(selected.cinemaId, editingRoom.roomId, payload);
         showToast('Đã cập nhật phòng chiếu');
       } else {
         await cinemaApi.createRoom(selected.cinemaId, payload);
-        showToast('Đã thêm phòng chiếu');
+        showToast('Đã thêm phòng và tự động sinh 120 ghế');
       }
       setRoomForm(null);
       setEditingRoom(null);
       await fetchRooms(selected.cinemaId);
     } catch (err) {
       showToast((err as { message?: string })?.message ?? 'Lưu phòng thất bại', 'error');
+    }
+  };
+
+  const generateRoomSeats = async (room: Room) => {
+    if (!selected || generatingRoomId !== null) return;
+    const cinemaId = selected.cinemaId;
+    setGeneratingRoomId(room.roomId);
+    try {
+      const result = await cinemaApi.generateRoomSeats(cinemaId, room.roomId);
+      showToast(result.created > 0 ? `Đã sinh ${result.created} ghế cho phòng` : 'Phòng đã có đủ ghế');
+      await fetchRooms(cinemaId);
+    } catch (err) {
+      showToast((err as { message?: string })?.message ?? 'Sinh ghế phòng thất bại', 'error');
+    } finally {
+      setGeneratingRoomId(null);
     }
   };
 
@@ -258,7 +278,7 @@ export default function AdminCinemasPage() {
                     <Th>ID</Th>
                     <Th>Tên phòng</Th>
                     <Th>Loại</Th>
-                    <Th>Số ghế</Th>
+                    <Th>Ghế thực tế / sức chứa</Th>
                     <Th>Trạng thái</Th>
                     <Th>Thao tác</Th>
                   </tr>
@@ -269,7 +289,7 @@ export default function AdminCinemasPage() {
                       <Td className="text-gray-500">#{r.roomId}</Td>
                       <Td className="text-white font-medium">{r.roomName}</Td>
                       <Td className="text-gray-300">{r.roomType}</Td>
-                      <Td className="text-gray-400">{r.totalSeats}</Td>
+                      <Td className="text-gray-400">{r.actualSeats ?? '—'} / {r.totalSeats}</Td>
                       <Td>
                         <Pill color={r.status === 'ACTIVE' ? 'green' : 'gray'}>{r.status}</Pill>
                       </Td>
@@ -284,6 +304,11 @@ export default function AdminCinemasPage() {
                           >
                             Sửa
                           </Btn>
+                          {r.actualSeats === 0 && r.status === 'ACTIVE' && [0, 120].includes(r.totalSeats) && (
+                            <Btn variant="primary" disabled={generatingRoomId !== null} onClick={() => void generateRoomSeats(r)}>
+                              {generatingRoomId === r.roomId ? 'Đang sinh...' : 'Sinh 120 ghế'}
+                            </Btn>
+                          )}
                           <Btn variant="danger" onClick={() => setConfirmDeleteRoom(r)}>
                             Xoá
                           </Btn>
@@ -390,11 +415,16 @@ export default function AdminCinemasPage() {
               <input
                 type="number"
                 className={inputClass}
-                value={roomForm.totalSeats ?? 0}
-                onChange={(e) => setRoomForm({ ...roomForm, totalSeats: Number(e.target.value) })}
+                value={editingRoom ? editingRoom.totalSeats : 120}
+                readOnly
               />
             </Field>
           </div>
+          {!editingRoom && (
+            <p className="mt-3 text-sm text-gray-400">
+              Tự sinh 120 vị trí: A–C ghế thường (36), D–I VIP (72), J ghế đôi (12 vị trí / 6 cặp).
+            </p>
+          )}
         </Modal>
       )}
 
