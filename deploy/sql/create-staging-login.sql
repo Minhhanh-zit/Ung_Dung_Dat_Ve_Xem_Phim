@@ -36,8 +36,30 @@ BEGIN
 END;
 GO
 
-ALTER ROLE [db_datareader] ADD MEMBER [cinehunt_staging_app];
-ALTER ROLE [db_datawriter] ADD MEMBER [cinehunt_staging_app];
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.database_role_members rm
+    INNER JOIN sys.database_principals role_principal
+        ON role_principal.principal_id = rm.role_principal_id
+    INNER JOIN sys.database_principals member_principal
+        ON member_principal.principal_id = rm.member_principal_id
+    WHERE role_principal.name = N'db_datareader'
+      AND member_principal.name = N'cinehunt_staging_app'
+)
+    ALTER ROLE [db_datareader] ADD MEMBER [cinehunt_staging_app];
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.database_role_members rm
+    INNER JOIN sys.database_principals role_principal
+        ON role_principal.principal_id = rm.role_principal_id
+    INNER JOIN sys.database_principals member_principal
+        ON member_principal.principal_id = rm.member_principal_id
+    WHERE role_principal.name = N'db_datawriter'
+      AND member_principal.name = N'cinehunt_staging_app'
+)
+    ALTER ROLE [db_datawriter] ADD MEMBER [cinehunt_staging_app];
+
 GRANT EXECUTE TO [cinehunt_staging_app];
 GO
 
