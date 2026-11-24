@@ -1,0 +1,100 @@
+name: cinehunt-prod
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Set a strong SQL Server SA password}
+      MSSQL_PID: Developer
+    ports:
+      - "${SQLSERVER_BIND:-127.0.0.1}:1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 45s
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DB_HOST: sqlserver
+      DB_PORT: "1433"
+      DB_USERNAME: ${DB_USERNAME:-sa}
+      DB_PASSWORD: ${DB_PASSWORD:?Set database password}
+      DB_DATABASE: ${DB_DATABASE:?Set database name}
+      DB_ENCRYPT: "false"
+      DB_TRUST_SERVER_CERTIFICATE: "true"
+      DB_MIGRATIONS_RUN: "${DB_MIGRATIONS_RUN:-false}"
+      JWT_SECRET: ${JWT_SECRET:?Set JWT access secret}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT refresh secret}
+      RECOMMENDATION_SERVICE_URL: http://ai:8000
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set allowed web origins}
+      SWAGGER_ENABLED: "false"
+      ALLOW_DEMO_PAYMENT: "${ALLOW_DEMO_PAYMENT:-false}"
+    ports:
+      - "${BACKEND_BIND:-127.0.0.1}:3000:3000"
+    volumes:
+      - backend_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 6s
+      retries: 5
+      start_period: 60s
+
+  ai:
+    build:
+      context: ./ai
+    restart: unless-stopped
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      DB_HOST: sqlserver
+      DB_PORT: "1433"
+      DB_USERNAME: ${DB_USERNAME:-sa}
+      DB_PASSWORD: ${DB_PASSWORD:?Set database password}
+      DB_DATABASE: ${DB_DATABASE:?Set database name}
+      DB_ENCRYPT: "false"
+      DB_TRUST_SERVER_CERTIFICATE: "true"
+      DB_CONNECTOR: pyodbc
+      DB_ODBC_DRIVER: "ODBC Driver 18 for SQL Server"
+      AUTO_TRAIN_ON_START: "false"
+    volumes:
+      - ai_models:/app/model
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  admin-web:
+    build:
+      context: ./admin-web
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BACKEND_URL: http://backend:3000
+      NGINX_RESOLVER: "127.0.0.11"
+    ports:
+      - "${WEB_BIND:-0.0.0.0}:80:80"
+
+volumes:
+  sqlserver_data:
+  backend_uploads:
+  ai_models:
