@@ -1,0 +1,83 @@
+name: Deploy CineHunt to Local Ubuntu Staging
+
+# Manual deployment only. GitHub-hosted runner reaches the private Ubuntu VM
+# through Tailscale; SSH and monitoring ports are never exposed publicly.
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Full 40-character commit SHA published to GHCR (blank = this workflow commit)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cinehunt-local-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Join private Tailscale network
+        uses: tailscale/github-action@064b10558093f38325e838ddea35486bdc6b1d5c
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Configure SSH credentials
+        shell: bash
+        env:
+          STAGING_SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          STAGING_KNOWN_HOSTS: ${{ secrets.STAGING_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          test -n "$STAGING_SSH_PRIVATE_KEY"
+          test -n "$STAGING_KNOWN_HOSTS"
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$STAGING_SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$STAGING_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Deploy immutable GHCR image tag over SSH
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+        run: |
+          set -euo pipefail
+          [[ "$IMAGE_TAG" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "IMAGE_TAG must be a full 40-character commit SHA." >&2
+            exit 1
+          }
+          test -n "$STAGING_HOST"
+          test -n "$STAGING_USER"
+
+          ssh -i "$HOME/.ssh/id_ed25519" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "$STAGING_USER@$STAGING_HOST" \
+            "IMAGE_TAG='$IMAGE_TAG' bash -s" <<'REMOTE'
+          set -euo pipefail
+          REPOSITORY_URL="https://github.com/Minhhanh-zit/Ung_Dung_Dat_Ve_Xem_Phim.git"
+          REPOSITORY_DIR="$HOME/cinehunt"
+
+          if [[ ! -d "$REPOSITORY_DIR/.git" ]]; then
+            git clone "$REPOSITORY_URL" "$REPOSITORY_DIR"
+          fi
+
+          cd "$REPOSITORY_DIR"
+          git fetch --prune origin main
+          git cat-file -e "$IMAGE_TAG^{commit}"
+          git checkout --detach "$IMAGE_TAG"
+          bash deploy/scripts/deploy-staging.sh "$IMAGE_TAG"
+          REMOTE
