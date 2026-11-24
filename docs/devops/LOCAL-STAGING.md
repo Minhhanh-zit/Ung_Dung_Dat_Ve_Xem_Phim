@@ -2,6 +2,7 @@
 
 ## Architecture and safety boundaries
 
+- The repository also has a separate root-level `docker-compose.monitoring.yml` for local Mac Docker Desktop monitoring. That stack is not the Ubuntu VM staging stack. The new `deploy/compose.staging.yaml` runs on Ubuntu and collects actual Ubuntu host metrics plus its Docker container metrics.
 - Mac Apple Silicon remains the development host.
 - Ubuntu Server ARM64 runs the staging application and monitoring stack in Docker Compose.
 - Backend, Admin Web and AI images are published to GHCR as multi-platform images: `linux/amd64` and `linux/arm64`.
@@ -102,6 +103,11 @@ Merge the following rules into the existing tailnet policy. Do not delete existi
       "action": "accept",
       "src": ["tag:staging"],
       "dst": ["tag:db-host:14333"]
+    },
+    {
+      "action": "accept",
+      "src": ["tag:db-host"],
+      "dst": ["tag:staging:22"]
     },
     {
       "action": "accept",
