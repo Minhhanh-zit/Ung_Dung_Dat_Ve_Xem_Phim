@@ -227,7 +227,7 @@ SELECT COUNT(*) AS table_count FROM sys.tables;
 SELECT OBJECT_ID(N'dbo.users', N'U') AS users_table_id;
 ```
 
-- If `CineHunt_Test` already has tables or data, do not run the schema script. Confirm that it is the intended staging/test database first. If it is not a dedicated staging DB, stop here.
+- If `CineHunt_Test` exists, run the read-only table-count query. Only an empty database (zero tables and no data) is eligible for the schema script. If it has any tables or data, do not run the schema script; confirm that it is the intended staging/test database first. If it is not a dedicated staging DB, stop here.
 - If `CineHunt_Test` does not exist, the reviewed `database/safe/CineHunt_Schema_Safe.sql` creates that database and its schema. The file itself says it has not yet been executed in the repository, so run it only after verifying the target SQL instance and database name. Run it from the Mac against the existing test SQL container, never against `CineHuntDB`:
 
 ```bash
