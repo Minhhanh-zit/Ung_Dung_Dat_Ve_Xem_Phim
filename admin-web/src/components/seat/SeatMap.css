@@ -462,3 +462,63 @@
 /* CINEHUNT_COUPLE_PAIR_V1 */
 .seat.ch-couple-pair { flex: 0 0 auto; width: calc(2 * 42px + 6px); border-radius: 8px !important; }
 .seat.ch-couple-pair .seat-number { white-space: nowrap; }
+
+/* CINEHUNT_WEB_MOBILE_SEAT_SYNC_V1: same status palette as mobile themeTokens.ts.
+   Physical 12-seat rows; couple groups retain two seat widths. */
+.seat-map-wrapper {
+  --ch-seat-width: clamp(28px, 3.6vw, 40px);
+  --ch-seat-gap: 6px;
+  --ch-aisle: 12px;
+  --ch-free: #BFE3D0;
+  --ch-held: #1F5FE0;
+  --ch-selected: #6C3FD1;
+  --ch-sold: #B42318;
+  --ch-blocked: #D9CFB8;
+  --ch-free-text: #0B5C3B;
+  --ch-muted: #5F5370;
+  --ch-surface: #FFFDF8;
+  --ch-stroke: #E2D5BA;
+  --ch-strong: #2B2236;
+  --ch-on-status: #FFFFFF;
+  background: var(--ch-surface);
+  color: var(--ch-strong);
+  border-color: var(--ch-stroke);
+  box-shadow: none;
+}
+:root[data-theme="dark"] .seat-map-wrapper {
+  --ch-free: #294D52; --ch-held: #59D7FF; --ch-selected: #C2A5FF;
+  --ch-sold: #FF879F; --ch-blocked: #3A3B50; --ch-free-text: #9EF0DB;
+  --ch-muted: #A4AEC9; --ch-surface: #141A30; --ch-stroke: #303957;
+  --ch-strong: #FAFAFF; --ch-on-status: #080B16;
+}
+.seat-map-wrapper .seat-map-title { color: var(--ch-strong); text-shadow: none; }
+.seat-map-wrapper .stat-item, .seat-map-wrapper .row-label { color: var(--ch-muted); border-color: var(--ch-stroke); }
+.seat-map-wrapper .seat-map-container { overflow-x: auto; }
+.seat-map-wrapper .seat-map { min-width: 0; width: max-content; max-width: none; }
+.seat-map-wrapper .screen-container { min-width: 0; width: max(100%, calc(50px + 12 * var(--ch-seat-width) + 11 * var(--ch-seat-gap) + var(--ch-aisle))); margin-bottom: 22px; }
+.seat-map-wrapper .screen { border-top-color: var(--ch-selected); background: none; color: var(--ch-muted); box-shadow: none; text-shadow: none; transform: none; }
+.seat-map-wrapper .seat-row { min-height: 0; padding: 3px 4px; gap: 6px; }
+.seat-map-wrapper .row-label { flex: 0 0 24px; }
+.seat-map-wrapper .seats-container { gap: var(--ch-seat-gap); flex-wrap: nowrap; justify-content: flex-start; }
+.seat-map-wrapper .seat { box-sizing: border-box; padding: 0; width: var(--ch-seat-width); height: 37px; border: 1px solid var(--ch-stroke); border-bottom-width: 3px; box-shadow: none; }
+.seat-map-wrapper .seat::before { display: none; }
+.seat-map-wrapper .seat.seat-kind-standard { border-radius: 9px; }
+.seat-map-wrapper .seat.seat-kind-vip { border-radius: 5px; }
+.seat-map-wrapper .seat.ch-couple-pair { width: calc(2 * var(--ch-seat-width) + var(--ch-seat-gap)); border-radius: 5px !important; }
+.seat-map-wrapper .seat-row--12 .seat[data-seat-number="7"] { margin-inline-start: var(--ch-aisle); }
+.seat-map-wrapper .seat .seat-number { font-size: clamp(8px, 1vw, 11px); }
+.seat-map-wrapper .seat.available.seat-kind-standard:not(.selected),
+.seat-map-wrapper .seat.available.seat-kind-vip:not(.selected),
+.seat-map-wrapper .seat.available.seat-kind-couple:not(.selected),
+.seat-map-wrapper .legend-color.available { background: var(--ch-free); color: var(--ch-free-text); border-color: var(--ch-stroke); }
+.seat-map-wrapper .seat.held, .seat-map-wrapper .legend-color.held { background: var(--ch-held); color: var(--ch-on-status); border-color: var(--ch-stroke); }
+.seat-map-wrapper .seat.sold, .seat-map-wrapper .legend-color.sold { background: var(--ch-sold); color: var(--ch-on-status); border-color: var(--ch-stroke); }
+.seat-map-wrapper .seat.blocked, .seat-map-wrapper .legend-color.blocked { background: var(--ch-blocked); color: var(--ch-muted); border-color: var(--ch-stroke); }
+.seat-map-wrapper .seat.selected, .seat-map-wrapper .legend-color.selected { background: var(--ch-selected); color: var(--ch-on-status); border-color: var(--ch-stroke); box-shadow: none; }
+.seat-map-wrapper .seat.disabled { opacity: 1 !important; filter: none; }
+.seat-map-wrapper .seat:not(.disabled):hover { color: inherit; transform: translateY(-2px); }
+.seat-map-wrapper .seat:focus-visible { outline: 2px solid var(--ch-selected); outline-offset: 2px; }
+.seat-map-wrapper .ch-beta-legend { border-color: var(--ch-stroke); }
+.seat-map-wrapper .stat-item.available .stat-dot { color: var(--ch-free-text); }
+.seat-map-wrapper .stat-item.selected .stat-dot { color: var(--ch-selected); }
+.seat-map-wrapper .stat-item.sold .stat-dot { color: var(--ch-sold); }

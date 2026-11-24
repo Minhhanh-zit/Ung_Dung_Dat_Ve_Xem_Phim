@@ -1,3 +1,4 @@
+// CINEHUNT_WEB_MOBILE_SEAT_SYNC_V1
 import { isCouple, seatGroup } from '../../utils/coupleSeats'; // CINEHUNT_COUPLE_PAIR_V1
 import React, { useMemo, useState } from 'react';
 import type { SeatMapProps, GroupedSeats, SeatId } from '../../types/seat.types';
@@ -9,7 +10,7 @@ const SeatMap: React.FC<SeatMapProps> = ({
   seats,
   selectedIds,
   onSeatToggle,
-  maxSeats = 10,
+  maxSeats = 8,
   heldIds,
   showLegend = true,
 }) => {
@@ -30,7 +31,7 @@ const SeatMap: React.FC<SeatMapProps> = ({
     return groups;
   }, [seats]);
 
-  const rowNames = useMemo(() => Object.keys(groupedSeats).sort(), [groupedSeats]);
+  const rowNames = useMemo(() => Object.keys(groupedSeats).sort((a, b) => a.localeCompare(b)), [groupedSeats]);
 
   const isDisabled = (seatId: SeatId, status: string): boolean =>
     UNSELECTABLE_STATUSES.includes(status as never) || (heldIds?.has(String(seatId)) ?? false);
@@ -72,6 +73,7 @@ const SeatMap: React.FC<SeatMapProps> = ({
       <div className="seat-map-header">
         <h2 className="seat-map-title">Sơ đồ ghế</h2>
         <div className="seat-stats">
+          <span className="stat-item">Tổng: {seats.length} chỗ</span>
           <span className="stat-item available"><span className="stat-dot"></span>Trống: {stats.available}</span>
           <span className="stat-item selected"><span className="stat-dot"></span>Đã chọn: {selected.size}</span>
           <span className="stat-item sold"><span className="stat-dot"></span>Đã bán: {stats.sold}</span>
@@ -94,13 +96,13 @@ const SeatMap: React.FC<SeatMapProps> = ({
       <p className="ch-beta-note">Ghế đôi: chọn cả 2 chỗ liền nhau, giá theo cặp.</p>
       <div className="seat-map-container">
         <div className="screen-container">
-          <div className="screen"><span>MÀN HÌNH</span></div>
+          <div className="screen"><span>MÀN HÌNH CHIẾU</span></div>
         </div>
         <div className="seat-map">
           {rowNames.map((rowName) => (
             <div
               key={rowName}
-              className={`seat-row ${hoveredRow === rowName ? 'hovered' : ''}`}
+              className={`seat-row ${groupedSeats[rowName].length === 12 ? 'seat-row--12' : ''} ${hoveredRow === rowName ? 'hovered' : ''}`}
               onMouseEnter={() => setHoveredRow(rowName)}
               onMouseLeave={() => setHoveredRow(null)}
             >
@@ -108,7 +110,9 @@ const SeatMap: React.FC<SeatMapProps> = ({
               <div className="seats-container">
                 {groupedSeats[rowName].map(seat=>{
                   const group=seatGroup(seats,seat);if(group.length===2&&group[0].id!==seat.id)return null;
-                  const unavailable=group.find(s=>isDisabled(s.id,s.status));
+                  const unavailable = group.find(s => s.status === 'SOLD' || s.status === 'BOOKED')
+                    ?? group.find(s => s.status === 'HELD')
+                    ?? group.find(s => isDisabled(s.id, s.status));
                   const complete=!isCouple(seat)||group.length===2;
                   const visual={...seat,status:unavailable?.status??seat.status,price:group.reduce((sum,s)=>sum+Number(s.price??0),0)};
                   return <SeatItem key={String(seat.id)} seat={visual} pairLabel={group.length===2?group.map(s=>`${s.rowName}${s.seatNumber}`).join('–'):undefined} selected={group.every(s=>isSelected(s.id))} onClick={()=>handleSeatClick(seat.id)} disabled={!complete||!!unavailable}/>;

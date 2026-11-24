@@ -1,3 +1,4 @@
+// CINEHUNT_WEB_MOBILE_SEAT_SYNC_V1
 // CINEHUNT_COUPLE_PAIR_V1
 import React from 'react';
 import type { SeatItemProps } from '../../types/seat.types';
@@ -23,7 +24,7 @@ const SeatItem: React.FC<SeatItemProps> = ({ seat, selected, onClick, disabled =
     return map[seat.status] ?? '';
   };
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     if (!isDisabled) onClick();
   };
@@ -31,12 +32,15 @@ const SeatItem: React.FC<SeatItemProps> = ({ seat, selected, onClick, disabled =
   const getStatusClass = () => selected ? 'selected' : visualStatus.toLowerCase();
 
   return (
-    <div
+    <button
+      type="button"
+      disabled={isDisabled}
+      data-seat-number={seat.seatNumber}
       className={`seat ${getStatusClass()} seat-kind-${kind} ${pairLabel?'ch-couple-pair':''} ${isDisabled ? 'disabled' : ''}`}
       onClick={handleClick}
       style={{ cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.85 : 1 }}
       title={`${getTooltip()} · ${kind==='vip'?'VIP':kind==='couple'?pairLabel?'Ghế đôi / cặp':'Ghế đôi / chỗ':'Thường'} · ${seat.price==null?'Chưa có giá':Number(seat.price).toLocaleString('vi-VN')+' đ'}`}
-      role="button"
+      aria-pressed={selected}
       aria-disabled={isDisabled}
       aria-label={`Ghế ${pairLabel??`${seat.rowName}${seat.seatNumber}`} - ${seat.status}`}
     >
@@ -48,7 +52,7 @@ const SeatItem: React.FC<SeatItemProps> = ({ seat, selected, onClick, disabled =
           {seat.status === 'BLOCKED' && '⊘'}
         </span>
       )}
-    </div>
+    </button>
   );
 };
 
