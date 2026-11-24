@@ -29,7 +29,7 @@ async function isolatedApi(page: Page, custom?: (path: string, route: Route) => 
       await route.fulfill({ status: 405, contentType: 'application/json', body: JSON.stringify({ message: 'Mock test: chặn mọi thao tác ghi' }) });
       return;
     }
-    if (path === '/movies') {
+    if (path === '/movies' || path === '/movies/catalog') {
       await route.fulfill({ json: { items: movies, total: movies.length, page: 1, limit: 50 } });
     } else if (path === '/movie-ratings/top') {
       await route.fulfill({ json: [] });
@@ -55,19 +55,24 @@ async function isolatedApi(page: Page, custom?: (path: string, route: Route) => 
 
 const go = (page: Page, url: string) => page.goto(url, { waitUntil: 'domcontentloaded' });
 
-/** Movie list, search and filtering use mocked GET /movies, not seeded SQL. */
+/** Movie list, search and filtering use mocked GET /movies/catalog, not seeded SQL. */
 test('Phim: hiển thị phim từ API và nút mua vé', async ({ page }) => {
   await isolatedApi(page);
   await go(page, '/movies');
   await expect(page.getByRole('heading', { name: 'Khám phá phim' })).toBeVisible();
-  await expect(page.locator('.cc-card')).toHaveCount(2);
+  await expect(page.locator('.cc-card')).toHaveCount(1);
   await expect(page.locator('.cc-card').first()).toContainText('Kiểm Thử Hành Tinh');
   await expect(page.locator('.cc-card').first().getByRole('link', { name: 'Mua vé' })).toHaveAttribute('href', '/showtimes/101');
+  await page.getByRole('button', { name: 'Tất cả', exact: true }).click();
+  await expect(page.locator('.cc-card')).toHaveCount(2);
 });
 
 test('Phim: lọc Đang chiếu và Sắp chiếu', async ({ page }) => {
   await isolatedApi(page);
   await go(page, '/movies');
+  await expect(page.locator('.cc-card')).toHaveCount(1);
+  await expect(page.locator('.cc-card').first()).toContainText('Kiểm Thử Hành Tinh');
+  await page.getByRole('button', { name: 'Tất cả', exact: true }).click();
   await expect(page.locator('.cc-card')).toHaveCount(2);
   await page.getByRole('button', { name: 'Sắp chiếu', exact: true }).click();
   await expect(page.locator('.cc-card')).toHaveCount(1);
@@ -80,6 +85,7 @@ test('Phim: lọc Đang chiếu và Sắp chiếu', async ({ page }) => {
 test('Phim: tìm tên không tồn tại hiển thị trạng thái rỗng', async ({ page }) => {
   await isolatedApi(page);
   await go(page, '/movies');
+  await page.getByRole('button', { name: 'Tất cả', exact: true }).click();
   await expect(page.locator('.cc-card')).toHaveCount(2);
   await page.getByPlaceholder('Tìm theo tên phim...').fill('Phim không có trong CineHunt 999');
   await expect(page.getByText('Không tìm thấy phim phù hợp.')).toBeVisible();
@@ -89,7 +95,7 @@ test('Phim: tìm tên không tồn tại hiển thị trạng thái rỗng', asy
 test('Phim: API lỗi hiện Thử lại và phục hồi khi API hoạt động', async ({ page }) => {
   let attempts = 0;
   await isolatedApi(page, async (path, route) => {
-    if (path !== '/movies') return false;
+    if (path !== '/movies/catalog') return false;
     attempts++;
     if (attempts === 1) await route.fulfill({ status: 503, json: { message: 'Hệ thống tạm bận' } });
     else await route.fulfill({ json: { items: movies, total: movies.length } });
@@ -98,6 +104,8 @@ test('Phim: API lỗi hiện Thử lại và phục hồi khi API hoạt động
   await go(page, '/movies');
   await expect(page.getByRole('button', { name: 'Thử lại' })).toBeVisible();
   await page.getByRole('button', { name: 'Thử lại' }).click();
+  await expect(page.locator('.cc-card')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Tất cả', exact: true }).click();
   await expect(page.locator('.cc-card')).toHaveCount(2);
   expect(attempts).toBeGreaterThanOrEqual(2);
 });
