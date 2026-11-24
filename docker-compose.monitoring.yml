@@ -22,10 +22,10 @@ services:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    image: ghcr.io/google/cadvisor:0.60.6
     restart: unless-stopped
     privileged: true
-    command: ['--docker_only=true', '--housekeeping_interval=15s', '--disable_metrics=disk']
+    command: ['--docker_only=true', '--housekeeping_interval=15s']
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
