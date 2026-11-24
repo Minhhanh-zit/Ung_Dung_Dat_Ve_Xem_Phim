@@ -227,12 +227,46 @@ SELECT COUNT(*) AS table_count FROM sys.tables;
 SELECT OBJECT_ID(N'dbo.users', N'U') AS users_table_id;
 ```
 
-- If `CineHunt_Test` is already populated, do not run the schema script. Confirm that it is the intended staging/test database first.
-- If `CineHunt_Test` does not exist, the reviewed `database/safe/CineHunt_Schema_Safe.sql` creates that database and its schema. It is documented as not yet executed in the repository, so run it only after verifying the target SQL instance and database name.
-- Never run `database/reference/CineHunt_Database_V6_3_With_Sample_Data.sql` on a database with data. It contains destructive table operations.
+- If `CineHunt_Test` already has tables or data, do not run the schema script. Confirm that it is the intended staging/test database first. If it is not a dedicated staging DB, stop here.
+- If `CineHunt_Test` does not exist, the reviewed `database/safe/CineHunt_Schema_Safe.sql` creates that database and its schema. The file itself says it has not yet been executed in the repository, so run it only after verifying the target SQL instance and database name. Run it from the Mac against the existing test SQL container, never against `CineHuntDB`:
+
+```bash
+cd "$HOME/Projects/Cinehunt-local-clean"
+docker cp database/safe/CineHunt_Schema_Safe.sql cinehunt-sql-dev:/tmp/CineHunt_Schema_Safe.sql
+docker exec cinehunt-sql-dev bash -lc '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -b -i /tmp/CineHunt_Schema_Safe.sql'
+docker exec cinehunt-sql-dev rm -f /tmp/CineHunt_Schema_Safe.sql
+```
+
+- The original `database/reference/CineHunt_Database_V6_3_With_Sample_Data.sql` is destructive: it starts with `DROP DATABASE CineHuntDB` and drops database objects. Never execute it.
 - Never set staging `DB_DATABASE` to `CineHuntDB`.
 
-The reference seed file `database/safe/CineHunt_Seed_Reference_Safe.sql` is optional and should only be run after the schema exists and only on the isolated test database. It inserts reference roles, seat types, genres and concession combos, not customer accounts or bookings.
+### Create a least-privilege staging login
+
+Do not run the app as SQL Server `sa`. After the staging schema exists, use the dedicated script. It creates `cinehunt_staging_app` and grants only `db_datareader`, `db_datawriter`, and `EXECUTE` inside `CineHunt_Test`; it does not grant `db_owner` or `sysadmin`.
+
+Run on the Mac from the repository root:
+
+```bash
+export STAGING_DB_PASSWORD="CineHunt_$(openssl rand -hex 24)A9"
+cp deploy/sql/create-staging-login.sql /tmp/cinehunt-staging-login.sql
+python3 - <<'PY'
+import os
+from pathlib import Path
+path = Path("/tmp/cinehunt-staging-login.sql")
+sql = path.read_text()
+sql = sql.replace("REPLACE_WITH_RANDOM_PASSWORD", os.environ["STAGING_DB_PASSWORD"])
+path.write_text(sql)
+PY
+docker cp /tmp/cinehunt-staging-login.sql cinehunt-sql-dev:/tmp/cinehunt-staging-login.sql
+docker exec cinehunt-sql-dev bash -lc '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -b -i /tmp/cinehunt-staging-login.sql'
+docker exec cinehunt-sql-dev rm -f /tmp/cinehunt-staging-login.sql
+rm -f /tmp/cinehunt-staging-login.sql
+printf 'DB_USERNAME=cinehunt_staging_app\nDB_PASSWORD=%s\n' "$STAGING_DB_PASSWORD"
+```
+
+Copy the printed password into the Ubuntu staging env file. Do not screenshot or commit it. If the login already exists, do not rerun the script with a newly generated password; stop and verify/reset that test login deliberately.
+
+The reference seed file `database/safe/CineHunt_Seed_Reference_Safe.sql` is optional. Run it only after the schema exists and only on the isolated test database. It inserts reference roles, seat types, genres and concession combos, not customer accounts or bookings.
 
 ## 6. Configure the staging environment file on Ubuntu
 
@@ -250,7 +284,7 @@ Edit `~/.config/cinehunt/.env.staging`:
 - `STAGING_DB_HOST`: Mac Tailscale IPv4 address
 - `STAGING_DB_PORT`: `14333`
 - `DB_DATABASE`: `CineHunt_Test`
-- SQL password: staging/test credential only
+- `DB_USERNAME`: `cinehunt_staging_app`\n- `DB_PASSWORD`: the generated password printed by the least-privilege login setup above
 - Generate separate secrets:
 
 ```bash
