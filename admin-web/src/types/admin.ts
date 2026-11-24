@@ -126,6 +126,7 @@ export interface Room {
   roomName: string;
   roomType: 'STANDARD' | 'VIP' | 'IMAX' | '4DX';
   totalSeats: number;
+  actualSeats?: number;
   status: 'ACTIVE' | 'INACTIVE';
 }
 

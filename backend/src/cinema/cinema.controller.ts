@@ -85,6 +85,16 @@ export class CinemaController {
     return this.cinemaService.createRoom(id, body);
   }
 
+  @Post(':id/rooms/:roomId/seats/generate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  generateRoomSeats(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('roomId', ParseIntPipe) roomId: number,
+  ) {
+    return this.cinemaService.generateRoomSeats(id, roomId);
+  }
+
   @Patch(':id/rooms/:roomId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')

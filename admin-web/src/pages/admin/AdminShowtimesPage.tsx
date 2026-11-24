@@ -59,6 +59,11 @@ const AdminShowtimesPage: React.FC = () => {
     try {
       const res = await generateSeats(showtimeId);
       const created = Number(res?.created ?? 0);
+      const total = Number(res?.total ?? 0);
+      if (total === 0) {
+        showToast('Suất chiếu chưa có ghế. Hãy sinh ghế trong phòng trước.', 'error');
+        return;
+      }
       showToast(
         created > 0
           ? `Đã sinh ${created} ghế cho suất chiếu #${showtimeId}`

@@ -171,11 +171,10 @@ export class ShowtimeService {
       relations: ['seatType'],
     });
 
-    if (seats.length === 0) {
-      this.logger.warn(
-        `Phòng #${roomId} chưa có ghế nào -> suất chiếu #${showtimeId} được tạo với 0 ghế`,
+    if (!seats.some((seat) => seat.status === 'ACTIVE')) {
+      throw new ConflictException(
+        `Phòng #${roomId} chưa có ghế hoạt động. Hãy sinh ghế phòng trước.`,
       );
-      return 0;
     }
 
     const existing = await manager.find(ShowtimeSeat, {
@@ -325,19 +324,29 @@ export class ShowtimeService {
     }
     this.assertRoomAvailable(showtime.room);
 
-    const created = await this.dataSource.transaction((manager) =>
-      this.seedSeatsForShowtime(
-        manager,
-        showtime.showtimeId,
-        showtime.roomId,
-        Number(showtime.basePrice),
-      ),
-    );
+    const created = await this.dataSource.transaction(async (manager) => {
+      const current = await manager.findOne(Showtime, {
+        where: { showtimeId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!current || current.status !== 'OPEN' || current.roomId !== showtime.roomId ||
+          new Date(current.startTime).getTime() <= Date.now()) {
+        throw new ConflictException('Suất chiếu không còn hợp lệ để sinh ghế');
+      }
+      await this.acquireRoomScheduleLock(manager, current.roomId);
+      const room = await manager.findOne(Room, {
+        where: { roomId: current.roomId }, relations: ['cinema'],
+      });
+      if (!room) throw new NotFoundException('Không tìm thấy phòng chiếu');
+      this.assertRoomAvailable(room);
+      return this.seedSeatsForShowtime(manager, current.showtimeId, current.roomId, Number(current.basePrice));
+    });
 
     const total = await this.showtimeSeatRepository.count({
       where: { showtimeId: showtime.showtimeId },
     });
 
+    if (total === 0) throw new ConflictException('Suất chiếu chưa có ghế');
     return {
       message: created > 0 ? `Đã sinh thêm ${created} ghế` : 'Suất chiếu đã có đủ ghế',
       showtimeId: showtime.showtimeId,
