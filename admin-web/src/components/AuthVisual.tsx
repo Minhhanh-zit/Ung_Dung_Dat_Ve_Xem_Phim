@@ -4,6 +4,7 @@ type AuthVisualProps = {
 
 const TEAM_MEMBERS = [
   { name: 'Chu Thị Minh Hạnh', studentId: 'BIT246755' },
+  { name: 'Phạm Phương Linh', studentId: 'BIT230239' },
   { name: 'Nguyễn Hà Trung Nam', studentId: 'BIT240168' },
   { name: 'Phạm Ngọc Thành', studentId: 'BIT240216' },
   { name: 'Nguyễn Quốc Tuấn', studentId: 'BIT240241' },
