@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: CineHunt Staging
+    orgId: 1
+    folder: CineHunt Staging
+    type: file
+    disableDeletion: true
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards
