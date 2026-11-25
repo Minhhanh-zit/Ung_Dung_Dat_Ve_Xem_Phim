@@ -7,7 +7,6 @@ const TEAM_MEMBERS = [
   { name: 'Phạm Phương Linh', studentId: 'BIT230239' },
   { name: 'Nguyễn Hà Trung Nam', studentId: 'BIT240168' },
   { name: 'Phạm Ngọc Thành', studentId: 'BIT240216' },
-  { name: 'Nguyễn Quốc Tuấn', studentId: 'BIT240241' },
 ];
 
 const COPY = {

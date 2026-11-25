@@ -1,0 +1,10 @@
+﻿services:
+  backend:
+    image: ghcr.io/minhhanh-zit/cinehunt-backend:sha-4dd6a6e
+    environment:
+      DB_MIGRATIONS_RUN: "false"
+      ALLOW_DEMO_PAYMENT: "false"
+  admin-web:
+    image: ghcr.io/minhhanh-zit/cinehunt-admin-web:sha-4dd6a6e
+  ai:
+    image: ghcr.io/minhhanh-zit/cinehunt-ai:sha-4dd6a6e

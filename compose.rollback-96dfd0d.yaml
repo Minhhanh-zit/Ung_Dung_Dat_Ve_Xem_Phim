@@ -1,0 +1,7 @@
+﻿services:
+  backend:
+    image: ghcr.io/minhhanh-zit/cinehunt-backend@sha256:45d7d3ad9000076e485770540356b83ade21d347b4e9e215ba102ecd48e39880
+  admin-web:
+    image: ghcr.io/minhhanh-zit/cinehunt-admin-web@sha256:acef409d6ca245cd270831dbeafe36c8a55d76e6dc2703ad1478de989e413df2
+  ai:
+    image: ghcr.io/minhhanh-zit/cinehunt-ai@sha256:35bcff32f71765241d84812e9f8a88568ab7753fee46684838786a3ecd0e15cd
